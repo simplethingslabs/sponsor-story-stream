@@ -27,7 +27,13 @@ import EventsList from "./pages/admin/EventsList";
 import SponsorsList from "./pages/admin/SponsorsList";
 
 // Sponsor Pages
-import SponsorDashboard from "./pages/SponsorDashboard";
+import SponsorHome from "./pages/sponsor/SponsorHome";
+import SponsorChildrenList from "./pages/sponsor/SponsorChildrenList";
+import ChildProgress from "./pages/sponsor/ChildProgress";
+import ReportDetail from "./pages/sponsor/ReportDetail";
+import SponsorNewsletters from "./pages/sponsor/SponsorNewsletters";
+import SponsorEvents from "./pages/sponsor/SponsorEvents";
+import InviteFriend from "./pages/sponsor/InviteFriend";
 
 const queryClient = new QueryClient();
 
@@ -64,7 +70,13 @@ const App = () => (
               <Route path="/dashboard/sponsors" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SponsorsList /></ProtectedRoute>} />
 
               {/* Sponsor routes */}
-              <Route path="/sponsor" element={<ProtectedRoute allowedRoles={['sponsor']}><SponsorDashboard /></ProtectedRoute>} />
+              <Route path="/sponsor" element={<ProtectedRoute allowedRoles={['sponsor']}><SponsorHome /></ProtectedRoute>} />
+              <Route path="/sponsor/children" element={<ProtectedRoute allowedRoles={['sponsor']}><SponsorChildrenList /></ProtectedRoute>} />
+              <Route path="/sponsor/children/:childId" element={<ProtectedRoute allowedRoles={['sponsor']}><ChildProgress /></ProtectedRoute>} />
+              <Route path="/sponsor/reports/:reportId" element={<ProtectedRoute allowedRoles={['sponsor']}><ReportDetail /></ProtectedRoute>} />
+              <Route path="/sponsor/newsletters" element={<ProtectedRoute allowedRoles={['sponsor']}><SponsorNewsletters /></ProtectedRoute>} />
+              <Route path="/sponsor/events" element={<ProtectedRoute allowedRoles={['sponsor']}><SponsorEvents /></ProtectedRoute>} />
+              <Route path="/sponsor/invite" element={<ProtectedRoute allowedRoles={['sponsor']}><InviteFriend /></ProtectedRoute>} />
 
               {/* Catch-all */}
               <Route path="*" element={<NotFound />} />
