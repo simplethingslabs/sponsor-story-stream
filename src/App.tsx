@@ -4,18 +4,30 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { DataProvider } from "@/contexts/DataContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AuthLayout } from "@/components/layouts/AuthLayout";
 
-// Pages
+// Public Pages
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import RegistrationPending from "./pages/RegistrationPending";
-import Dashboard from "./pages/Dashboard";
-import SponsorDashboard from "./pages/SponsorDashboard";
 import NotFound from "./pages/NotFound";
+
+// Admin Pages
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import ChildrenList from "./pages/admin/ChildrenList";
+import AddChild from "./pages/admin/AddChild";
+import ReportsList from "./pages/admin/ReportsList";
+import CreateReport from "./pages/admin/CreateReport";
+import NewslettersList from "./pages/admin/NewslettersList";
+import EventsList from "./pages/admin/EventsList";
+import SponsorsList from "./pages/admin/SponsorsList";
+
+// Sponsor Pages
+import SponsorDashboard from "./pages/SponsorDashboard";
 
 const queryClient = new QueryClient();
 
@@ -26,41 +38,38 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<Index />} />
-            
-            {/* Auth routes with shared layout */}
-            <Route element={<AuthLayout />}>
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/registration-pending" element={<RegistrationPending />} />
-            </Route>
+          <DataProvider>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/" element={<Index />} />
+              
+              {/* Auth routes */}
+              <Route element={<AuthLayout />}>
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/registration-pending" element={<RegistrationPending />} />
+              </Route>
 
-            {/* Protected admin/teacher routes */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
+              {/* Admin/Teacher routes */}
+              <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><AdminDashboard /></ProtectedRoute>} />
+              <Route path="/dashboard/children" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><ChildrenList /></ProtectedRoute>} />
+              <Route path="/dashboard/children/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><AddChild /></ProtectedRoute>} />
+              <Route path="/dashboard/reports" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><ReportsList /></ProtectedRoute>} />
+              <Route path="/dashboard/reports/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><CreateReport /></ProtectedRoute>} />
+              <Route path="/dashboard/newsletters" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><NewslettersList /></ProtectedRoute>} />
+              <Route path="/dashboard/newsletters/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><NewslettersList /></ProtectedRoute>} />
+              <Route path="/dashboard/events" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><EventsList /></ProtectedRoute>} />
+              <Route path="/dashboard/events/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><EventsList /></ProtectedRoute>} />
+              <Route path="/dashboard/sponsors" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SponsorsList /></ProtectedRoute>} />
 
-            {/* Protected sponsor routes */}
-            <Route
-              path="/sponsor"
-              element={
-                <ProtectedRoute allowedRoles={['sponsor']}>
-                  <SponsorDashboard />
-                </ProtectedRoute>
-              }
-            />
+              {/* Sponsor routes */}
+              <Route path="/sponsor" element={<ProtectedRoute allowedRoles={['sponsor']}><SponsorDashboard /></ProtectedRoute>} />
 
-            {/* Catch-all */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              {/* Catch-all */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </DataProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
