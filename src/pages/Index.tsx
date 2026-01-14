@@ -1,10 +1,8 @@
 import { Link } from 'react-router-dom';
 import { Heart, Users, BookOpen, Share2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
 export default function Index() {
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         {/* Background decoration */}
@@ -20,9 +18,7 @@ export default function Index() {
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
                 <Heart className="h-5 w-5 text-primary-foreground" />
               </div>
-              <span className="text-xl font-bold text-primary">
-                SponsorConnect
-              </span>
+              <span className="text-xl font-bold text-primary">AVPSponsorConnect</span>
             </div>
             <div className="flex items-center gap-4">
               <Link to="/login">
@@ -35,7 +31,7 @@ export default function Index() {
           </nav>
 
           {/* Hero Content */}
-          <div className="py-20 md:py-32 text-center max-w-3xl mx-auto">
+          <div className="py-20 md:py-32 text-center max-w-3xl mx-auto text-[#ed5407]">
             <h1 className="text-4xl md:text-6xl font-bold text-foreground leading-tight">
               Transform a Child's Future{' '}
               <span className="text-gradient-warm">One Quarter at a Time</span>
@@ -147,6 +143,5 @@ export default function Index() {
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 }
