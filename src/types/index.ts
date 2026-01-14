@@ -111,6 +111,30 @@ export interface PaginatedResponse<T> {
   hasMore: boolean;
 }
 
+// Pending Registration Types
+export interface PendingRegistration {
+  id: string;
+  email: string;
+  full_name: string;
+  phone?: string;
+  message?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+  reviewed_at?: string;
+  reviewed_by?: string;
+}
+
+// Sponsor Invitation Types
+export interface SponsorInvitation {
+  id: string;
+  email: string;
+  invited_by: string;
+  status: 'pending' | 'accepted' | 'expired';
+  created_at: string;
+  expires_at: string;
+  accepted_at?: string;
+}
+
 // Auth Types
 export interface LoginCredentials {
   email: string;
