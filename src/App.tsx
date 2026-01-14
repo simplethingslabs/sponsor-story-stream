@@ -20,10 +20,14 @@ import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import ChildrenList from "./pages/admin/ChildrenList";
 import AddChild from "./pages/admin/AddChild";
+import EditChild from "./pages/admin/EditChild";
 import ReportsList from "./pages/admin/ReportsList";
 import CreateReport from "./pages/admin/CreateReport";
+import EditReport from "./pages/admin/EditReport";
 import NewslettersList from "./pages/admin/NewslettersList";
+import AddNewsletter from "./pages/admin/AddNewsletter";
 import EventsList from "./pages/admin/EventsList";
+import AddEvent from "./pages/admin/AddEvent";
 import SponsorsList from "./pages/admin/SponsorsList";
 
 // Sponsor Pages
@@ -61,12 +65,14 @@ const App = () => (
               <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><AdminDashboard /></ProtectedRoute>} />
               <Route path="/dashboard/children" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><ChildrenList /></ProtectedRoute>} />
               <Route path="/dashboard/children/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><AddChild /></ProtectedRoute>} />
+              <Route path="/dashboard/children/:id/edit" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><EditChild /></ProtectedRoute>} />
               <Route path="/dashboard/reports" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><ReportsList /></ProtectedRoute>} />
               <Route path="/dashboard/reports/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><CreateReport /></ProtectedRoute>} />
+              <Route path="/dashboard/reports/:id/edit" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><EditReport /></ProtectedRoute>} />
               <Route path="/dashboard/newsletters" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><NewslettersList /></ProtectedRoute>} />
-              <Route path="/dashboard/newsletters/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><NewslettersList /></ProtectedRoute>} />
+              <Route path="/dashboard/newsletters/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><AddNewsletter /></ProtectedRoute>} />
               <Route path="/dashboard/events" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><EventsList /></ProtectedRoute>} />
-              <Route path="/dashboard/events/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><EventsList /></ProtectedRoute>} />
+              <Route path="/dashboard/events/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><AddEvent /></ProtectedRoute>} />
               <Route path="/dashboard/sponsors" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SponsorsList /></ProtectedRoute>} />
 
               {/* Sponsor routes */}
