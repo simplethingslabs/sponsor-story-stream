@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import type { Child, ProgressReport, Newsletter, SchoolEvent, Sponsorship } from '@/types';
+import type { Child, ProgressReport, Newsletter, SchoolEvent, Sponsorship, UserWithRoles, PendingRegistration, SponsorInvitation } from '@/types';
 import {
   mockChildren,
   mockProgressReports,
@@ -8,6 +8,9 @@ import {
   mockSponsorships,
   mockReportMedia,
   mockEventMedia,
+  mockSponsors,
+  mockPendingRegistrations,
+  mockSponsorInvitations,
 } from '@/data/mockData';
 
 interface DataContextType {
@@ -41,8 +44,27 @@ interface DataContextType {
   // Sponsorships
   sponsorships: Sponsorship[];
   getChildrenForSponsor: (sponsorId: string) => Child[];
+  getSponsorsForChild: (childId: string) => UserWithRoles[];
   assignSponsor: (sponsorId: string, childId: string) => void;
   removeSponsor: (sponsorId: string, childId: string) => void;
+
+  // Sponsors
+  sponsors: UserWithRoles[];
+  getSponsorById: (id: string) => UserWithRoles | undefined;
+  addSponsor: (sponsor: Omit<UserWithRoles, 'id' | 'created_at' | 'updated_at' | 'roles'>) => void;
+  updateSponsor: (id: string, updates: Partial<UserWithRoles>) => void;
+  deleteSponsor: (id: string) => void;
+
+  // Pending Registrations
+  pendingRegistrations: PendingRegistration[];
+  approveRegistration: (id: string, reviewerId: string) => void;
+  rejectRegistration: (id: string, reviewerId: string) => void;
+
+  // Sponsor Invitations
+  sponsorInvitations: SponsorInvitation[];
+  createInvitation: (email: string, invitedBy: string) => void;
+  cancelInvitation: (id: string) => void;
+  resendInvitation: (id: string) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -53,6 +75,9 @@ export function DataProvider({ children: childrenProp }: { children: React.React
   const [newsletters, setNewsletters] = useState<Newsletter[]>(mockNewsletters);
   const [events, setEvents] = useState<SchoolEvent[]>(mockEvents);
   const [sponsorships, setSponsorships] = useState<Sponsorship[]>(mockSponsorships);
+  const [sponsors, setSponsors] = useState<UserWithRoles[]>(mockSponsors);
+  const [pendingRegistrations, setPendingRegistrations] = useState<PendingRegistration[]>(mockPendingRegistrations);
+  const [sponsorInvitations, setSponsorInvitations] = useState<SponsorInvitation[]>(mockSponsorInvitations);
 
   // Children CRUD
   const addChild = useCallback((child: Omit<Child, 'id' | 'created_at' | 'updated_at'>) => {
@@ -164,9 +189,16 @@ export function DataProvider({ children: childrenProp }: { children: React.React
     return childrenData.filter(c => sponsoredChildIds.includes(c.id));
   }, [sponsorships, childrenData]);
 
+  const getSponsorsForChild = useCallback((childId: string) => {
+    const sponsorIds = sponsorships
+      .filter(s => s.child_id === childId && s.status === 'active')
+      .map(s => s.sponsor_id);
+    return sponsors.filter(sp => sponsorIds.includes(sp.id));
+  }, [sponsorships, sponsors]);
+
   const assignSponsor = useCallback((sponsorId: string, childId: string) => {
     const existing = sponsorships.find(
-      s => s.sponsor_id === sponsorId && s.child_id === childId
+      s => s.sponsor_id === sponsorId && s.child_id === childId && s.status === 'active'
     );
     if (!existing) {
       const newSponsorship: Sponsorship = {
@@ -184,9 +216,113 @@ export function DataProvider({ children: childrenProp }: { children: React.React
   const removeSponsor = useCallback((sponsorId: string, childId: string) => {
     setSponsorships(prev =>
       prev.map(s =>
-        s.sponsor_id === sponsorId && s.child_id === childId
+        s.sponsor_id === sponsorId && s.child_id === childId && s.status === 'active'
           ? { ...s, status: 'ended' as const, end_date: new Date().toISOString().split('T')[0] }
           : s
+      )
+    );
+  }, []);
+
+  // Sponsors CRUD
+  const getSponsorById = useCallback((id: string) => {
+    return sponsors.find(s => s.id === id);
+  }, [sponsors]);
+
+  const addSponsor = useCallback((sponsor: Omit<UserWithRoles, 'id' | 'created_at' | 'updated_at' | 'roles'>) => {
+    const newSponsor: UserWithRoles = {
+      ...sponsor,
+      id: `sponsor-${Date.now()}`,
+      roles: ['sponsor'],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    setSponsors(prev => [...prev, newSponsor]);
+  }, []);
+
+  const updateSponsor = useCallback((id: string, updates: Partial<UserWithRoles>) => {
+    setSponsors(prev =>
+      prev.map(s =>
+        s.id === id ? { ...s, ...updates, updated_at: new Date().toISOString() } : s
+      )
+    );
+  }, []);
+
+  const deleteSponsor = useCallback((id: string) => {
+    setSponsors(prev => prev.filter(s => s.id !== id));
+    // Also end all their sponsorships
+    setSponsorships(prev =>
+      prev.map(s =>
+        s.sponsor_id === id && s.status === 'active'
+          ? { ...s, status: 'ended' as const, end_date: new Date().toISOString().split('T')[0] }
+          : s
+      )
+    );
+  }, []);
+
+  // Pending Registrations
+  const approveRegistration = useCallback((id: string, reviewerId: string) => {
+    setPendingRegistrations(prev => {
+      const registration = prev.find(r => r.id === id);
+      if (registration) {
+        // Create a new sponsor from the approved registration
+        const newSponsor: UserWithRoles = {
+          id: `sponsor-${Date.now()}`,
+          email: registration.email,
+          full_name: registration.full_name,
+          phone: registration.phone,
+          roles: ['sponsor'],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        setSponsors(sp => [...sp, newSponsor]);
+      }
+      return prev.map(r =>
+        r.id === id
+          ? { ...r, status: 'approved' as const, reviewed_at: new Date().toISOString(), reviewed_by: reviewerId }
+          : r
+      );
+    });
+  }, []);
+
+  const rejectRegistration = useCallback((id: string, reviewerId: string) => {
+    setPendingRegistrations(prev =>
+      prev.map(r =>
+        r.id === id
+          ? { ...r, status: 'rejected' as const, reviewed_at: new Date().toISOString(), reviewed_by: reviewerId }
+          : r
+      )
+    );
+  }, []);
+
+  // Sponsor Invitations
+  const createInvitation = useCallback((email: string, invitedBy: string) => {
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 14); // 14 days expiry
+
+    const newInvitation: SponsorInvitation = {
+      id: `inv-${Date.now()}`,
+      email,
+      invited_by: invitedBy,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+      expires_at: expiresAt.toISOString(),
+    };
+    setSponsorInvitations(prev => [newInvitation, ...prev]);
+  }, []);
+
+  const cancelInvitation = useCallback((id: string) => {
+    setSponsorInvitations(prev => prev.filter(i => i.id !== id));
+  }, []);
+
+  const resendInvitation = useCallback((id: string) => {
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 14);
+    
+    setSponsorInvitations(prev =>
+      prev.map(i =>
+        i.id === id
+          ? { ...i, created_at: new Date().toISOString(), expires_at: expiresAt.toISOString() }
+          : i
       )
     );
   }, []);
@@ -215,8 +351,21 @@ export function DataProvider({ children: childrenProp }: { children: React.React
         getEventMedia,
         sponsorships,
         getChildrenForSponsor,
+        getSponsorsForChild,
         assignSponsor,
         removeSponsor,
+        sponsors,
+        getSponsorById,
+        addSponsor,
+        updateSponsor,
+        deleteSponsor,
+        pendingRegistrations,
+        approveRegistration,
+        rejectRegistration,
+        sponsorInvitations,
+        createInvitation,
+        cancelInvitation,
+        resendInvitation,
       }}
     >
       {childrenProp}

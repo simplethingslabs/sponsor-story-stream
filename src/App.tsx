@@ -29,6 +29,10 @@ import AddNewsletter from "./pages/admin/AddNewsletter";
 import EventsList from "./pages/admin/EventsList";
 import AddEvent from "./pages/admin/AddEvent";
 import SponsorsList from "./pages/admin/SponsorsList";
+import SponsorDetail from "./pages/admin/SponsorDetail";
+import ManageSponsorships from "./pages/admin/ManageSponsorships";
+import PendingApprovals from "./pages/admin/PendingApprovals";
+import InviteSponsor from "./pages/admin/InviteSponsor";
 
 // Sponsor Pages
 import SponsorHome from "./pages/sponsor/SponsorHome";
@@ -74,6 +78,10 @@ const App = () => (
               <Route path="/dashboard/events" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><EventsList /></ProtectedRoute>} />
               <Route path="/dashboard/events/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><AddEvent /></ProtectedRoute>} />
               <Route path="/dashboard/sponsors" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SponsorsList /></ProtectedRoute>} />
+              <Route path="/dashboard/sponsors/invite" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><InviteSponsor /></ProtectedRoute>} />
+              <Route path="/dashboard/sponsors/pending" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><PendingApprovals /></ProtectedRoute>} />
+              <Route path="/dashboard/sponsors/:id" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SponsorDetail /></ProtectedRoute>} />
+              <Route path="/dashboard/sponsors/:id/manage" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><ManageSponsorships /></ProtectedRoute>} />
 
               {/* Sponsor routes */}
               <Route path="/sponsor" element={<ProtectedRoute allowedRoles={['sponsor']}><SponsorHome /></ProtectedRoute>} />

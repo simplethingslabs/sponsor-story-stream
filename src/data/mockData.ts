@@ -237,6 +237,67 @@ export const mockSponsors: UserWithRoles[] = [
     created_at: '2022-03-15T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
   },
+  {
+    id: 'sponsor-3',
+    email: 'david.chen@example.com',
+    full_name: 'David Chen',
+    avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100',
+    phone: '+1-555-0789',
+    roles: ['sponsor'],
+    created_at: '2023-09-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
+  },
+];
+
+// Demo Pending Registrations
+import type { PendingRegistration, SponsorInvitation } from '@/types';
+
+export const mockPendingRegistrations: PendingRegistration[] = [
+  {
+    id: 'reg-1',
+    email: 'sarah.smith@example.com',
+    full_name: 'Sarah Smith',
+    phone: '+1-555-1234',
+    message: 'I heard about your school from a friend and would love to sponsor a child.',
+    status: 'pending',
+    created_at: '2025-01-10T10:30:00Z',
+  },
+  {
+    id: 'reg-2',
+    email: 'michael.brown@example.com',
+    full_name: 'Michael Brown',
+    message: 'Interested in supporting education for underprivileged children.',
+    status: 'pending',
+    created_at: '2025-01-08T14:20:00Z',
+  },
+  {
+    id: 'reg-3',
+    email: 'emily.davis@example.com',
+    full_name: 'Emily Davis',
+    phone: '+1-555-5678',
+    status: 'pending',
+    created_at: '2025-01-05T09:15:00Z',
+  },
+];
+
+// Demo Sponsor Invitations
+export const mockSponsorInvitations: SponsorInvitation[] = [
+  {
+    id: 'inv-1',
+    email: 'robert.taylor@example.com',
+    invited_by: 'admin-1',
+    status: 'pending',
+    created_at: '2025-01-12T11:00:00Z',
+    expires_at: '2025-01-26T11:00:00Z',
+  },
+  {
+    id: 'inv-2',
+    email: 'jennifer.white@example.com',
+    invited_by: 'admin-1',
+    status: 'pending',
+    created_at: '2025-01-11T15:30:00Z',
+    expires_at: '2025-01-25T15:30:00Z',
+  },
 ];
 
 // Helper functions

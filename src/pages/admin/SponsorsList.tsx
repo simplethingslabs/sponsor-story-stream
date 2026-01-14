@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/layouts/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,26 +14,17 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Plus, Search, MoreHorizontal, Mail, UserX } from 'lucide-react';
-import { mockSponsors, mockSponsorships, mockChildren } from '@/data/mockData';
+import { Plus, Search, Eye, UserCheck, Mail } from 'lucide-react';
+import { useData } from '@/contexts/DataContext';
 
 export default function SponsorsList() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
+  const { sponsors, getChildrenForSponsor, pendingRegistrations } = useData();
 
-  const getSponsoredChildren = (sponsorId: string) => {
-    const childIds = mockSponsorships
-      .filter((s) => s.sponsor_id === sponsorId && s.status === 'active')
-      .map((s) => s.child_id);
-    return mockChildren.filter((c) => childIds.includes(c.id));
-  };
+  const pendingCount = pendingRegistrations.filter((r) => r.status === 'pending').length;
 
-  const filteredSponsors = mockSponsors.filter(
+  const filteredSponsors = sponsors.filter(
     (sponsor) =>
       sponsor.full_name.toLowerCase().includes(search.toLowerCase()) ||
       sponsor.email.toLowerCase().includes(search.toLowerCase())
@@ -49,10 +41,21 @@ export default function SponsorsList() {
               View and manage all sponsors and their sponsorships
             </p>
           </div>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Invite Sponsor
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate('/dashboard/sponsors/pending')}>
+              <UserCheck className="mr-2 h-4 w-4" />
+              Pending
+              {pendingCount > 0 && (
+                <Badge variant="destructive" className="ml-2">
+                  {pendingCount}
+                </Badge>
+              )}
+            </Button>
+            <Button onClick={() => navigate('/dashboard/sponsors/invite')}>
+              <Plus className="mr-2 h-4 w-4" />
+              Invite Sponsor
+            </Button>
+          </div>
         </div>
 
         {/* Search */}
@@ -80,7 +83,7 @@ export default function SponsorsList() {
                   <TableHead>Email</TableHead>
                   <TableHead>Sponsored Children</TableHead>
                   <TableHead>Since</TableHead>
-                  <TableHead className="w-[80px]">Actions</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -92,9 +95,13 @@ export default function SponsorsList() {
                   </TableRow>
                 ) : (
                   filteredSponsors.map((sponsor) => {
-                    const sponsoredChildren = getSponsoredChildren(sponsor.id);
+                    const sponsoredChildren = getChildrenForSponsor(sponsor.id);
                     return (
-                      <TableRow key={sponsor.id}>
+                      <TableRow
+                        key={sponsor.id}
+                        className="cursor-pointer"
+                        onClick={() => navigate(`/dashboard/sponsors/${sponsor.id}`)}
+                      >
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar>
@@ -134,23 +141,25 @@ export default function SponsorsList() {
                           {new Date(sponsor.created_at).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem>
-                                <Mail className="mr-2 h-4 w-4" />
-                                Send Email
-                              </DropdownMenuItem>
-                              <DropdownMenuItem className="text-destructive">
-                                <UserX className="mr-2 h-4 w-4" />
-                                Remove Sponsor
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/dashboard/sponsors/${sponsor.id}`);
+                              }}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Mail className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
