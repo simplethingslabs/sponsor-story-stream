@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '@/contexts/DataContext';
 import { AdminLayout } from '@/components/layouts/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -31,21 +30,145 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Search, MoreHorizontal, Edit, Trash2, Eye } from 'lucide-react';
+import { SearchFilterBar, type FilterConfig, type SortOption } from '@/components/SearchFilterBar';
+import { Plus, MoreHorizontal, Edit, Trash2, Eye } from 'lucide-react';
 import { calculateAge } from '@/data/mockData';
 
 export default function ChildrenList() {
-  const { children, deleteChild } = useData();
+  const { children, deleteChild, getSponsorsForChild } = useData();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [filters, setFilters] = useState<Record<string, string>>({
+    grade: 'all',
+    status: 'all',
+    sponsorship: 'all',
+  });
+  const [sortBy, setSortBy] = useState('default');
 
-  const filteredChildren = children.filter(
-    (child) =>
-      child.first_name.toLowerCase().includes(search.toLowerCase()) ||
-      child.last_name.toLowerCase().includes(search.toLowerCase()) ||
-      child.grade.toLowerCase().includes(search.toLowerCase())
-  );
+  // Extract unique grades from children data
+  const gradeOptions = useMemo(() => {
+    const grades = [...new Set(children.map((c) => c.grade))].sort();
+    return grades.map((grade) => ({ value: grade, label: grade }));
+  }, [children]);
+
+  const filterConfigs: FilterConfig[] = [
+    {
+      key: 'grade',
+      label: 'Grades',
+      options: gradeOptions,
+      placeholder: 'Grade',
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      options: [
+        { value: 'active', label: 'Active' },
+        { value: 'inactive', label: 'Inactive' },
+        { value: 'graduated', label: 'Graduated' },
+      ],
+      placeholder: 'Status',
+    },
+    {
+      key: 'sponsorship',
+      label: 'Sponsorship',
+      options: [
+        { value: 'sponsored', label: 'Sponsored' },
+        { value: 'unsponsored', label: 'Unsponsored' },
+      ],
+      placeholder: 'Sponsorship',
+    },
+  ];
+
+  const sortOptions: SortOption[] = [
+    { value: 'name-asc', label: 'Name (A-Z)' },
+    { value: 'name-desc', label: 'Name (Z-A)' },
+    { value: 'age-asc', label: 'Age (Youngest)' },
+    { value: 'age-desc', label: 'Age (Oldest)' },
+    { value: 'enrolled-newest', label: 'Newest Enrolled' },
+    { value: 'enrolled-oldest', label: 'Oldest Enrolled' },
+  ];
+
+  const filteredAndSortedChildren = useMemo(() => {
+    let result = children.filter((child) => {
+      // Text search
+      const matchesSearch =
+        search === '' ||
+        child.first_name.toLowerCase().includes(search.toLowerCase()) ||
+        child.last_name.toLowerCase().includes(search.toLowerCase()) ||
+        child.grade.toLowerCase().includes(search.toLowerCase());
+
+      // Grade filter
+      const matchesGrade =
+        filters.grade === 'all' || child.grade === filters.grade;
+
+      // Status filter
+      const matchesStatus =
+        filters.status === 'all' || child.status === filters.status;
+
+      // Sponsorship filter
+      let matchesSponsorship = true;
+      if (filters.sponsorship !== 'all') {
+        const sponsors = getSponsorsForChild(child.id);
+        const isSponsored = sponsors.length > 0;
+        matchesSponsorship =
+          (filters.sponsorship === 'sponsored' && isSponsored) ||
+          (filters.sponsorship === 'unsponsored' && !isSponsored);
+      }
+
+      return matchesSearch && matchesGrade && matchesStatus && matchesSponsorship;
+    });
+
+    // Sorting
+    if (sortBy !== 'default') {
+      result = [...result].sort((a, b) => {
+        switch (sortBy) {
+          case 'name-asc':
+            return `${a.first_name} ${a.last_name}`.localeCompare(
+              `${b.first_name} ${b.last_name}`
+            );
+          case 'name-desc':
+            return `${b.first_name} ${b.last_name}`.localeCompare(
+              `${a.first_name} ${a.last_name}`
+            );
+          case 'age-asc':
+            return (
+              new Date(b.date_of_birth).getTime() -
+              new Date(a.date_of_birth).getTime()
+            );
+          case 'age-desc':
+            return (
+              new Date(a.date_of_birth).getTime() -
+              new Date(b.date_of_birth).getTime()
+            );
+          case 'enrolled-newest':
+            return (
+              new Date(b.enrollment_date).getTime() -
+              new Date(a.enrollment_date).getTime()
+            );
+          case 'enrolled-oldest':
+            return (
+              new Date(a.enrollment_date).getTime() -
+              new Date(b.enrollment_date).getTime()
+            );
+          default:
+            return 0;
+        }
+      });
+    }
+
+    return result;
+  }, [children, search, filters, sortBy, getSponsorsForChild]);
+
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleClearAll = () => {
+    setSearch('');
+    setFilters({ grade: 'all', status: 'all', sponsorship: 'all' });
+    setSortBy('default');
+  };
 
   const handleDelete = () => {
     if (deleteId) {
@@ -71,20 +194,28 @@ export default function ChildrenList() {
           </Button>
         </div>
 
-        {/* Search */}
+        {/* Search & Filters */}
         <Card>
           <CardContent className="pt-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search by name or grade..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <SearchFilterBar
+              searchValue={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Search by name or grade..."
+              filters={filterConfigs}
+              filterValues={filters}
+              onFilterChange={handleFilterChange}
+              sortOptions={sortOptions}
+              sortValue={sortBy}
+              onSortChange={setSortBy}
+              onClearAll={handleClearAll}
+            />
           </CardContent>
         </Card>
+
+        {/* Results Count */}
+        <div className="text-sm text-muted-foreground">
+          Showing {filteredAndSortedChildren.length} of {children.length} children
+        </div>
 
         {/* Table */}
         <Card>
@@ -101,14 +232,14 @@ export default function ChildrenList() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredChildren.length === 0 ? (
+                {filteredAndSortedChildren.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center">
                       No children found.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredChildren.map((child) => (
+                  filteredAndSortedChildren.map((child) => (
                     <TableRow key={child.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
@@ -145,7 +276,7 @@ export default function ChildrenList() {
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
+                          <DropdownMenuContent align="end" className="bg-background">
                             <DropdownMenuItem
                               onClick={() => navigate(`/dashboard/children/${child.id}`)}
                             >

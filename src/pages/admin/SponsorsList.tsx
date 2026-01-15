@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useData } from '@/contexts/DataContext';
 import { AdminLayout } from '@/components/layouts/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -14,21 +14,112 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Search, Eye, UserCheck, Mail } from 'lucide-react';
-import { useData } from '@/contexts/DataContext';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { SearchFilterBar, type FilterConfig, type SortOption } from '@/components/SearchFilterBar';
+import { Plus, MoreHorizontal, Eye, UserCheck, Mail, UserX } from 'lucide-react';
 
 export default function SponsorsList() {
   const navigate = useNavigate();
+  const { sponsors, getChildrenForSponsor, pendingRegistrations, deleteSponsor } = useData();
   const [search, setSearch] = useState('');
-  const { sponsors, getChildrenForSponsor, pendingRegistrations } = useData();
+  const [filters, setFilters] = useState<Record<string, string>>({
+    sponsorship: 'all',
+  });
+  const [sortBy, setSortBy] = useState('default');
 
   const pendingCount = pendingRegistrations.filter((r) => r.status === 'pending').length;
 
-  const filteredSponsors = sponsors.filter(
-    (sponsor) =>
-      sponsor.full_name.toLowerCase().includes(search.toLowerCase()) ||
-      sponsor.email.toLowerCase().includes(search.toLowerCase())
-  );
+  const filterConfigs: FilterConfig[] = [
+    {
+      key: 'sponsorship',
+      label: 'Status',
+      options: [
+        { value: 'active', label: 'Active (Sponsoring)' },
+        { value: 'inactive', label: 'Inactive (No Children)' },
+      ],
+      placeholder: 'Sponsorship Status',
+    },
+  ];
+
+  const sortOptions: SortOption[] = [
+    { value: 'name-asc', label: 'Name (A-Z)' },
+    { value: 'name-desc', label: 'Name (Z-A)' },
+    { value: 'children-most', label: 'Most Children' },
+    { value: 'children-least', label: 'Least Children' },
+    { value: 'newest', label: 'Newest First' },
+    { value: 'oldest', label: 'Oldest First' },
+  ];
+
+  const filteredAndSortedSponsors = useMemo(() => {
+    let result = sponsors.filter((sponsor) => {
+      // Text search
+      const matchesSearch =
+        search === '' ||
+        sponsor.full_name.toLowerCase().includes(search.toLowerCase()) ||
+        sponsor.email.toLowerCase().includes(search.toLowerCase());
+
+      // Sponsorship status filter
+      let matchesSponsorshipStatus = true;
+      if (filters.sponsorship !== 'all') {
+        const sponsoredChildren = getChildrenForSponsor(sponsor.id);
+        const isActive = sponsoredChildren.length > 0;
+        matchesSponsorshipStatus =
+          (filters.sponsorship === 'active' && isActive) ||
+          (filters.sponsorship === 'inactive' && !isActive);
+      }
+
+      return matchesSearch && matchesSponsorshipStatus;
+    });
+
+    // Sorting
+    if (sortBy !== 'default') {
+      result = [...result].sort((a, b) => {
+        switch (sortBy) {
+          case 'name-asc':
+            return a.full_name.localeCompare(b.full_name);
+          case 'name-desc':
+            return b.full_name.localeCompare(a.full_name);
+          case 'children-most':
+            return (
+              getChildrenForSponsor(b.id).length -
+              getChildrenForSponsor(a.id).length
+            );
+          case 'children-least':
+            return (
+              getChildrenForSponsor(a.id).length -
+              getChildrenForSponsor(b.id).length
+            );
+          case 'newest':
+            return (
+              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            );
+          case 'oldest':
+            return (
+              new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            );
+          default:
+            return 0;
+        }
+      });
+    }
+
+    return result;
+  }, [sponsors, search, filters, sortBy, getChildrenForSponsor]);
+
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleClearAll = () => {
+    setSearch('');
+    setFilters({ sponsorship: 'all' });
+    setSortBy('default');
+  };
 
   return (
     <AdminLayout>
@@ -58,20 +149,28 @@ export default function SponsorsList() {
           </div>
         </div>
 
-        {/* Search */}
+        {/* Search & Filters */}
         <Card>
           <CardContent className="pt-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search by name or email..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <SearchFilterBar
+              searchValue={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Search by name or email..."
+              filters={filterConfigs}
+              filterValues={filters}
+              onFilterChange={handleFilterChange}
+              sortOptions={sortOptions}
+              sortValue={sortBy}
+              onSortChange={setSortBy}
+              onClearAll={handleClearAll}
+            />
           </CardContent>
         </Card>
+
+        {/* Results Count */}
+        <div className="text-sm text-muted-foreground">
+          Showing {filteredAndSortedSponsors.length} of {sponsors.length} sponsors
+        </div>
 
         {/* Table */}
         <Card>
@@ -87,14 +186,14 @@ export default function SponsorsList() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredSponsors.length === 0 ? (
+                {filteredAndSortedSponsors.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="h-24 text-center">
                       No sponsors found.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredSponsors.map((sponsor) => {
+                  filteredAndSortedSponsors.map((sponsor) => {
                     const sponsoredChildren = getChildrenForSponsor(sponsor.id);
                     return (
                       <TableRow
@@ -141,25 +240,52 @@ export default function SponsorsList() {
                           {new Date(sponsor.created_at).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/dashboard/sponsors/${sponsor.id}`);
-                              }}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <Mail className="h-4 w-4" />
-                            </Button>
-                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="bg-background">
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/dashboard/sponsors/${sponsor.id}`);
+                                }}
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/dashboard/sponsorships`);
+                                }}
+                              >
+                                <UserCheck className="mr-2 h-4 w-4" />
+                                Manage Sponsorships
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  window.location.href = `mailto:${sponsor.email}`;
+                                }}
+                              >
+                                <Mail className="mr-2 h-4 w-4" />
+                                Send Email
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteSponsor(sponsor.id);
+                                }}
+                                className="text-destructive"
+                              >
+                                <UserX className="mr-2 h-4 w-4" />
+                                Remove Sponsor
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     );
