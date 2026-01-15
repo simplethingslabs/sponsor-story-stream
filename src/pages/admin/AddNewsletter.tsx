@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ArrowLeft, Upload, FileText, Loader2, X } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,6 +19,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useData } from '@/contexts/DataContext';
 import { AdminLayout } from '@/components/layouts/AdminLayout';
+import { FileUpload, ImageUpload, type UploadedFile, type ImageFile } from '@/components/media';
 
 const newsletterSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -34,7 +35,8 @@ export default function AddNewsletter() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { addNewsletter } = useData();
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [pdfFiles, setPdfFiles] = useState<UploadedFile[]>([]);
+  const [thumbnails, setThumbnails] = useState<ImageFile[]>([]);
 
   const form = useForm<NewsletterFormData>({
     resolver: zodResolver(newsletterSchema),
@@ -47,26 +49,14 @@ export default function AddNewsletter() {
     },
   });
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (file.type !== 'application/pdf') {
-        toast({
-          title: 'Invalid file type',
-          description: 'Please select a PDF file',
-          variant: 'destructive',
-        });
-        return;
-      }
-      setSelectedFile(file);
-      // In a real app, this would upload to storage and return a URL
-      form.setValue('file_url', URL.createObjectURL(file));
-    }
+  const handlePdfChange = (files: UploadedFile[]) => {
+    setPdfFiles(files);
+    form.setValue('file_url', files[0]?.url || '');
   };
 
-  const removeFile = () => {
-    setSelectedFile(null);
-    form.setValue('file_url', '');
+  const handleThumbnailChange = (images: ImageFile[]) => {
+    setThumbnails(images);
+    form.setValue('thumbnail_url', images[0]?.url || '');
   };
 
   const onSubmit = async (data: NewsletterFormData) => {
@@ -167,50 +157,16 @@ export default function AddNewsletter() {
                 <FormField
                   control={form.control}
                   name="file_url"
-                  render={({ field }) => (
+                  render={() => (
                     <FormItem>
                       <FormControl>
-                        <div className="space-y-4">
-                          {!selectedFile ? (
-                            <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted transition-colors">
-                              <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                <Upload className="w-10 h-10 mb-3 text-muted-foreground" />
-                                <p className="mb-2 text-sm text-muted-foreground">
-                                  <span className="font-semibold">Click to upload</span> or drag and drop
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  PDF files only
-                                </p>
-                              </div>
-                              <input
-                                type="file"
-                                className="hidden"
-                                accept="application/pdf"
-                                onChange={handleFileSelect}
-                              />
-                            </label>
-                          ) : (
-                            <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
-                              <div className="flex items-center gap-3">
-                                <FileText className="w-10 h-10 text-primary" />
-                                <div>
-                                  <p className="font-medium">{selectedFile.name}</p>
-                                  <p className="text-sm text-muted-foreground">
-                                    {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                                  </p>
-                                </div>
-                              </div>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={removeFile}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          )}
-                        </div>
+                        <FileUpload
+                          files={pdfFiles}
+                          onChange={handlePdfChange}
+                          accept="application/pdf"
+                          acceptLabel="PDF files only"
+                          maxSize={20}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -227,11 +183,17 @@ export default function AddNewsletter() {
                 <FormField
                   control={form.control}
                   name="thumbnail_url"
-                  render={({ field }) => (
+                  render={() => (
                     <FormItem>
-                      <FormLabel>Thumbnail URL</FormLabel>
                       <FormControl>
-                        <Input placeholder="https://..." {...field} />
+                        <ImageUpload
+                          images={thumbnails}
+                          onChange={handleThumbnailChange}
+                          multiple={false}
+                          maxFiles={1}
+                          aspectRatio="video"
+                          placeholder="Add thumbnail image"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
