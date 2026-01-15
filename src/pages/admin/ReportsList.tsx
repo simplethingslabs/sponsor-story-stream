@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '@/contexts/DataContext';
 import { AdminLayout } from '@/components/layouts/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
   Table,
@@ -30,27 +29,146 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Search, MoreHorizontal, Edit, Trash2, Eye, Send } from 'lucide-react';
+import { SearchFilterBar, type FilterConfig, type SortOption } from '@/components/SearchFilterBar';
+import { Plus, MoreHorizontal, Edit, Trash2, Eye, Send } from 'lucide-react';
 
 export default function ReportsList() {
   const { reports, children, deleteReport, updateReport } = useData();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [filters, setFilters] = useState<Record<string, string>>({
+    child: 'all',
+    quarter: 'all',
+    year: 'all',
+    status: 'all',
+  });
+  const [sortBy, setSortBy] = useState('default');
 
   const getChildName = (childId: string) => {
     const child = children.find((c) => c.id === childId);
     return child ? `${child.first_name} ${child.last_name}` : 'Unknown';
   };
 
-  const filteredReports = reports.filter((report) => {
-    const childName = getChildName(report.child_id).toLowerCase();
-    return (
-      childName.includes(search.toLowerCase()) ||
-      report.quarter.toLowerCase().includes(search.toLowerCase()) ||
-      report.year.toString().includes(search)
-    );
-  });
+  // Extract unique values for filters
+  const childOptions = useMemo(() => {
+    return children.map((c) => ({
+      value: c.id,
+      label: `${c.first_name} ${c.last_name}`,
+    }));
+  }, [children]);
+
+  const yearOptions = useMemo(() => {
+    const years = [...new Set(reports.map((r) => r.year))].sort((a, b) => b - a);
+    return years.map((year) => ({ value: year.toString(), label: year.toString() }));
+  }, [reports]);
+
+  const filterConfigs: FilterConfig[] = [
+    {
+      key: 'child',
+      label: 'Children',
+      options: childOptions,
+      placeholder: 'Child',
+    },
+    {
+      key: 'quarter',
+      label: 'Quarters',
+      options: [
+        { value: 'Q1', label: 'Q1' },
+        { value: 'Q2', label: 'Q2' },
+        { value: 'Q3', label: 'Q3' },
+        { value: 'Q4', label: 'Q4' },
+      ],
+      placeholder: 'Quarter',
+    },
+    {
+      key: 'year',
+      label: 'Years',
+      options: yearOptions,
+      placeholder: 'Year',
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      options: [
+        { value: 'draft', label: 'Draft' },
+        { value: 'published', label: 'Published' },
+      ],
+      placeholder: 'Status',
+    },
+  ];
+
+  const sortOptions: SortOption[] = [
+    { value: 'newest', label: 'Newest First' },
+    { value: 'oldest', label: 'Oldest First' },
+    { value: 'child-asc', label: 'Child Name (A-Z)' },
+    { value: 'child-desc', label: 'Child Name (Z-A)' },
+  ];
+
+  const filteredAndSortedReports = useMemo(() => {
+    let result = reports.filter((report) => {
+      const childName = getChildName(report.child_id).toLowerCase();
+
+      // Text search (child name or narrative content)
+      const matchesSearch =
+        search === '' ||
+        childName.includes(search.toLowerCase()) ||
+        report.growth_narrative?.toLowerCase().includes(search.toLowerCase()) ||
+        report.teacher_observations?.toLowerCase().includes(search.toLowerCase());
+
+      // Child filter
+      const matchesChild =
+        filters.child === 'all' || report.child_id === filters.child;
+
+      // Quarter filter
+      const matchesQuarter =
+        filters.quarter === 'all' || report.quarter === filters.quarter;
+
+      // Year filter
+      const matchesYear =
+        filters.year === 'all' || report.year.toString() === filters.year;
+
+      // Status filter
+      const matchesStatus =
+        filters.status === 'all' || report.status === filters.status;
+
+      return matchesSearch && matchesChild && matchesQuarter && matchesYear && matchesStatus;
+    });
+
+    // Sorting
+    if (sortBy !== 'default') {
+      result = [...result].sort((a, b) => {
+        switch (sortBy) {
+          case 'newest':
+            return (
+              new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+            );
+          case 'oldest':
+            return (
+              new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()
+            );
+          case 'child-asc':
+            return getChildName(a.child_id).localeCompare(getChildName(b.child_id));
+          case 'child-desc':
+            return getChildName(b.child_id).localeCompare(getChildName(a.child_id));
+          default:
+            return 0;
+        }
+      });
+    }
+
+    return result;
+  }, [reports, children, search, filters, sortBy]);
+
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleClearAll = () => {
+    setSearch('');
+    setFilters({ child: 'all', quarter: 'all', year: 'all', status: 'all' });
+    setSortBy('default');
+  };
 
   const handleDelete = () => {
     if (deleteId) {
@@ -83,20 +201,28 @@ export default function ReportsList() {
           </Button>
         </div>
 
-        {/* Search */}
+        {/* Search & Filters */}
         <Card>
           <CardContent className="pt-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search by child name, quarter, or year..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <SearchFilterBar
+              searchValue={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Search by child name or report content..."
+              filters={filterConfigs}
+              filterValues={filters}
+              onFilterChange={handleFilterChange}
+              sortOptions={sortOptions}
+              sortValue={sortBy}
+              onSortChange={setSortBy}
+              onClearAll={handleClearAll}
+            />
           </CardContent>
         </Card>
+
+        {/* Results Count */}
+        <div className="text-sm text-muted-foreground">
+          Showing {filteredAndSortedReports.length} of {reports.length} reports
+        </div>
 
         {/* Table */}
         <Card>
@@ -113,14 +239,14 @@ export default function ReportsList() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredReports.length === 0 ? (
+                {filteredAndSortedReports.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center">
                       No reports found.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredReports.map((report) => (
+                  filteredAndSortedReports.map((report) => (
                     <TableRow key={report.id}>
                       <TableCell className="font-medium">
                         {getChildName(report.child_id)}
@@ -146,7 +272,7 @@ export default function ReportsList() {
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
+                          <DropdownMenuContent align="end" className="bg-background">
                             <DropdownMenuItem
                               onClick={() =>
                                 navigate(`/dashboard/reports/${report.id}`)
