@@ -6,7 +6,6 @@ import { z } from 'zod';
 import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -26,6 +25,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useData } from '@/contexts/DataContext';
 import { AdminLayout } from '@/components/layouts/AdminLayout';
+import { AvatarUpload } from '@/components/media';
 
 const childSchema = z.object({
   first_name: z.string().min(1, 'First name is required'),
@@ -175,9 +175,14 @@ export default function EditChild() {
                   name="photo_url"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Photo URL (optional)</FormLabel>
+                      <FormLabel>Photo</FormLabel>
                       <FormControl>
-                        <Input placeholder="https://..." {...field} />
+                        <AvatarUpload
+                          value={field.value}
+                          onChange={field.onChange}
+                          name={`${form.watch('first_name')} ${form.watch('last_name')}`}
+                          size="lg"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Save } from 'lucide-react';
+import { AvatarUpload } from '@/components/media';
 
 const childSchema = z.object({
   first_name: z.string().min(1, 'First name is required'),
@@ -224,12 +225,18 @@ export default function AddChild() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="photo_url">Photo URL (optional)</Label>
-                <Input
-                  id="photo_url"
-                  {...register('photo_url')}
-                  placeholder="https://example.com/photo.jpg"
-                />
+                <Label>Photo (optional)</Label>
+                <div className="flex items-center gap-4">
+                  <AvatarUpload
+                    value={watch('photo_url')}
+                    onChange={(url) => setValue('photo_url', url)}
+                    name={`${watch('first_name') || ''} ${watch('last_name') || ''}`}
+                    size="xl"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Click the camera icon to upload a photo
+                  </p>
+                </div>
               </div>
 
               <div className="flex gap-3">
