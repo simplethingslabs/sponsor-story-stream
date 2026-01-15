@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { NotificationDropdown } from '@/components/NotificationDropdown';
 import {
   Home,
   Users,
@@ -14,7 +15,6 @@ import {
   LogOut,
   Menu,
   Heart,
-  Bell,
   ChevronDown,
 } from 'lucide-react';
 import {
@@ -25,7 +25,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
 
 interface SponsorLayoutProps {
   children: React.ReactNode;
@@ -121,12 +120,7 @@ export function SponsorLayout({ children }: SponsorLayoutProps) {
 
           <div className="flex items-center gap-3">
             {/* Notifications */}
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <Badge className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-xs">
-                2
-              </Badge>
-            </Button>
+            <NotificationDropdown />
 
             {/* User Menu */}
             <DropdownMenu>

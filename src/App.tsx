@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DataProvider } from "@/contexts/DataContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AuthLayout } from "@/components/layouts/AuthLayout";
 
@@ -53,7 +54,8 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <DataProvider>
-            <Routes>
+            <NotificationProvider>
+              <Routes>
               {/* Public routes */}
               <Route path="/" element={<Index />} />
               
@@ -94,7 +96,8 @@ const App = () => (
 
               {/* Catch-all */}
               <Route path="*" element={<NotFound />} />
-            </Routes>
+              </Routes>
+            </NotificationProvider>
           </DataProvider>
         </AuthProvider>
       </BrowserRouter>
