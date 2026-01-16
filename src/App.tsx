@@ -34,6 +34,8 @@ import SponsorDetail from "./pages/admin/SponsorDetail";
 import ManageSponsorships from "./pages/admin/ManageSponsorships";
 import PendingApprovals from "./pages/admin/PendingApprovals";
 import InviteSponsor from "./pages/admin/InviteSponsor";
+import AuditLogs from "./pages/admin/AuditLogs";
+import Trash from "./pages/admin/Trash";
 
 // Sponsor Pages
 import SponsorHome from "./pages/sponsor/SponsorHome";
@@ -84,6 +86,8 @@ const App = () => (
               <Route path="/dashboard/sponsors/pending" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><PendingApprovals /></ProtectedRoute>} />
               <Route path="/dashboard/sponsors/:id" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SponsorDetail /></ProtectedRoute>} />
               <Route path="/dashboard/sponsors/:id/manage" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><ManageSponsorships /></ProtectedRoute>} />
+              <Route path="/dashboard/audit-logs" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><AuditLogs /></ProtectedRoute>} />
+              <Route path="/dashboard/trash" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><Trash /></ProtectedRoute>} />
 
               {/* Sponsor routes */}
               <Route path="/sponsor" element={<ProtectedRoute allowedRoles={['sponsor']}><SponsorHome /></ProtectedRoute>} />
