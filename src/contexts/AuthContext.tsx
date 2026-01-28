@@ -10,46 +10,10 @@ interface AuthContextType extends AuthState {
   resetPassword: (token: string, password: string) => Promise<{ success: boolean; error?: string }>;
   hasRole: (role: UserRole) => boolean;
   hasAnyRole: (roles: UserRole[]) => boolean;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Demo users for development (remove in production)
-const DEMO_USERS: Record<string, { user: UserWithRoles; password: string }> = {
-  'admin@school.org': {
-    password: 'admin123',
-    user: {
-      id: '1',
-      email: 'admin@school.org',
-      full_name: 'School Administrator',
-      roles: ['super_admin'],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-  },
-  'teacher@school.org': {
-    password: 'teacher123',
-    user: {
-      id: '2',
-      email: 'teacher@school.org',
-      full_name: 'Priya Sharma',
-      roles: ['teacher'],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-  },
-  'sponsor@example.com': {
-    password: 'sponsor123',
-    user: {
-      id: '3',
-      email: 'sponsor@example.com',
-      full_name: 'Rajesh Kumar',
-      roles: ['sponsor'],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-  },
-};
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({
@@ -63,21 +27,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const checkAuth = async () => {
       const token = api.getToken();
       const storedUser = localStorage.getItem('user');
-      
+
       if (token && storedUser) {
         try {
-          // In production, verify token with backend
-          // const { data, error } = await api.get<UserWithRoles>('/auth/me');
-          // For now, use stored user
-          const user = JSON.parse(storedUser) as UserWithRoles;
+          // Verify token with backend
+          const { data, error } = await api.get<UserWithRoles>('/auth/me');
+
+          if (error || !data) {
+            // Token invalid, clear everything
+            api.clearTokens();
+            setState({ user: null, isAuthenticated: false, isLoading: false });
+            return;
+          }
+
+          // Update stored user with latest data
+          localStorage.setItem('user', JSON.stringify(data));
           setState({
-            user,
+            user: data,
             isAuthenticated: true,
             isLoading: false,
           });
         } catch {
-          api.setToken(null);
-          localStorage.removeItem('user');
+          api.clearTokens();
           setState({ user: null, isAuthenticated: false, isLoading: false });
         }
       } else {
@@ -88,35 +59,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkAuth();
   }, []);
 
-  const login = useCallback(async (credentials: LoginCredentials) => {
-    setState(prev => ({ ...prev, isLoading: true }));
-
-    // Demo mode - check demo users first
-    const demoUser = DEMO_USERS[credentials.email.toLowerCase()];
-    if (demoUser && demoUser.password === credentials.password) {
-      api.setToken('demo_token_' + demoUser.user.id);
-      localStorage.setItem('user', JSON.stringify(demoUser.user));
-      setState({
-        user: demoUser.user,
-        isAuthenticated: true,
-        isLoading: false,
-      });
-      return { success: true };
+  const refreshUser = useCallback(async () => {
+    const { data } = await api.get<UserWithRoles>('/auth/me');
+    if (data) {
+      localStorage.setItem('user', JSON.stringify(data));
+      setState((prev) => ({ ...prev, user: data }));
     }
+  }, []);
 
-    // Production API call
-    const { data, error } = await api.post<{ user: UserWithRoles; token: string }>(
-      '/auth/login',
-      credentials
-    );
+  const login = useCallback(async (credentials: LoginCredentials) => {
+    setState((prev) => ({ ...prev, isLoading: true }));
+
+    const { data, error } = await api.post<{
+      user: UserWithRoles;
+      access_token?: string;
+      token?: string;
+      refresh_token?: string;
+    }>('/auth/login', credentials);
 
     if (error || !data) {
-      setState(prev => ({ ...prev, isLoading: false }));
+      setState((prev) => ({ ...prev, isLoading: false }));
       return { success: false, error: error || 'Login failed' };
     }
 
-    api.setToken(data.token);
+    const accessToken = data.access_token || data.token;
+    api.setTokens(accessToken!, data.refresh_token);
     localStorage.setItem('user', JSON.stringify(data.user));
+
     setState({
       user: data.user,
       isAuthenticated: true,
@@ -127,32 +96,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const register = useCallback(async (data: RegisterData) => {
-    setState(prev => ({ ...prev, isLoading: true }));
+    setState((prev) => ({ ...prev, isLoading: true }));
 
-    const { data: responseData, error } = await api.post<{ user: UserWithRoles; token: string }>(
-      '/auth/register',
-      data
-    );
+    const { data: responseData, error } = await api.post<{
+      user: UserWithRoles;
+      access_token?: string;
+      token?: string;
+      refresh_token?: string;
+      message?: string;
+    }>('/auth/register', data);
 
     if (error || !responseData) {
-      setState(prev => ({ ...prev, isLoading: false }));
+      setState((prev) => ({ ...prev, isLoading: false }));
       return { success: false, error: error || 'Registration failed' };
     }
 
-    api.setToken(responseData.token);
-    localStorage.setItem('user', JSON.stringify(responseData.user));
-    setState({
-      user: responseData.user,
-      isAuthenticated: true,
-      isLoading: false,
-    });
+    // Check if registration requires approval (sponsor registration)
+    if (responseData.message && !responseData.access_token && !responseData.token) {
+      setState((prev) => ({ ...prev, isLoading: false }));
+      return { success: true }; // User needs to wait for approval
+    }
+
+    const accessToken = responseData.access_token || responseData.token;
+    if (accessToken) {
+      api.setTokens(accessToken, responseData.refresh_token);
+      localStorage.setItem('user', JSON.stringify(responseData.user));
+
+      setState({
+        user: responseData.user,
+        isAuthenticated: true,
+        isLoading: false,
+      });
+    } else {
+      setState((prev) => ({ ...prev, isLoading: false }));
+    }
 
     return { success: true };
   }, []);
 
   const logout = useCallback(() => {
-    api.setToken(null);
-    localStorage.removeItem('user');
+    // Optionally call logout endpoint
+    api.post('/auth/logout').catch(() => {
+      // Ignore errors, just clear local state
+    });
+
+    api.clearTokens();
     setState({
       user: null,
       isAuthenticated: false,
@@ -185,7 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const hasAnyRole = useCallback(
     (roles: UserRole[]) => {
-      return roles.some(role => state.user?.roles.includes(role));
+      return roles.some((role) => state.user?.roles.includes(role));
     },
     [state.user]
   );
@@ -201,6 +189,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         resetPassword,
         hasRole,
         hasAnyRole,
+        refreshUser,
       }}
     >
       {children}

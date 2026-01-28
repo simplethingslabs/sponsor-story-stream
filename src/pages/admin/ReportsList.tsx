@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useData } from '@/contexts/DataContext';
 import { AdminLayout } from '@/components/layouts/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,11 +29,18 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { SearchFilterBar, type FilterConfig, type SortOption } from '@/components/SearchFilterBar';
-import { Plus, MoreHorizontal, Edit, Trash2, Eye, Send } from 'lucide-react';
+import { Plus, MoreHorizontal, Edit, Trash2, Eye, Send, Loader2 } from 'lucide-react';
+import { useReports, useDeleteReport, usePublishReport, useChildren } from '@/hooks/useApi';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ReportsList() {
-  const { reports, children, deleteReport, updateReport } = useData();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { data: reportsData, isLoading, error } = useReports();
+  const { data: childrenData } = useChildren();
+  const deleteReportMutation = useDeleteReport();
+  const publishReportMutation = usePublishReport();
+
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [filters, setFilters] = useState<Record<string, string>>({
@@ -44,6 +50,9 @@ export default function ReportsList() {
     status: 'all',
   });
   const [sortBy, setSortBy] = useState('default');
+
+  const reports = reportsData?.data || [];
+  const children = childrenData?.data || [];
 
   const getChildName = (childId: string) => {
     const child = children.find((c) => c.id === childId);
@@ -170,19 +179,50 @@ export default function ReportsList() {
     setSortBy('default');
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteId) {
-      deleteReport(deleteId);
+      try {
+        await deleteReportMutation.mutateAsync(deleteId);
+        toast({
+          title: 'Success',
+          description: 'Report deleted successfully',
+        });
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: error instanceof Error ? error.message : 'Failed to delete report',
+          variant: 'destructive',
+        });
+      }
       setDeleteId(null);
     }
   };
 
-  const handlePublish = (reportId: string) => {
-    updateReport(reportId, {
-      status: 'published',
-      published_at: new Date().toISOString(),
-    });
+  const handlePublish = async (reportId: string) => {
+    try {
+      await publishReportMutation.mutateAsync({ id: reportId, notify_sponsors: true });
+      toast({
+        title: 'Success',
+        description: 'Report published successfully',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to publish report',
+        variant: 'destructive',
+      });
+    }
   };
+
+  if (error) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-destructive">Error loading reports: {error.message}</p>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
@@ -227,91 +267,98 @@ export default function ReportsList() {
         {/* Table */}
         <Card>
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Child</TableHead>
-                  <TableHead>Quarter</TableHead>
-                  <TableHead>Year</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Last Updated</TableHead>
-                  <TableHead className="w-[80px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredAndSortedReports.length === 0 ? (
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                      No reports found.
-                    </TableCell>
+                    <TableHead>Child</TableHead>
+                    <TableHead>Quarter</TableHead>
+                    <TableHead>Year</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Last Updated</TableHead>
+                    <TableHead className="w-[80px]">Actions</TableHead>
                   </TableRow>
-                ) : (
-                  filteredAndSortedReports.map((report) => (
-                    <TableRow key={report.id}>
-                      <TableCell className="font-medium">
-                        {getChildName(report.child_id)}
-                      </TableCell>
-                      <TableCell>{report.quarter}</TableCell>
-                      <TableCell>{report.year}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            report.status === 'published' ? 'default' : 'secondary'
-                          }
-                        >
-                          {report.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(report.updated_at).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="bg-background">
-                            <DropdownMenuItem
-                              onClick={() =>
-                                navigate(`/dashboard/reports/${report.id}`)
-                              }
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              View
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                navigate(`/dashboard/reports/${report.id}/edit`)
-                              }
-                            >
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            {report.status === 'draft' && (
-                              <DropdownMenuItem
-                                onClick={() => handlePublish(report.id)}
-                              >
-                                <Send className="mr-2 h-4 w-4" />
-                                Publish
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem
-                              onClick={() => setDeleteId(report.id)}
-                              className="text-destructive"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                </TableHeader>
+                <TableBody>
+                  {filteredAndSortedReports.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="h-24 text-center">
+                        No reports found.
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    filteredAndSortedReports.map((report) => (
+                      <TableRow key={report.id}>
+                        <TableCell className="font-medium">
+                          {getChildName(report.child_id)}
+                        </TableCell>
+                        <TableCell>{report.quarter}</TableCell>
+                        <TableCell>{report.year}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              report.status === 'published' ? 'default' : 'secondary'
+                            }
+                          >
+                            {report.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {new Date(report.updated_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="bg-background">
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  navigate(`/dashboard/reports/${report.id}`)
+                                }
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                View
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  navigate(`/dashboard/reports/${report.id}/edit`)
+                                }
+                              >
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              {report.status === 'draft' && (
+                                <DropdownMenuItem
+                                  onClick={() => handlePublish(report.id)}
+                                  disabled={publishReportMutation.isPending}
+                                >
+                                  <Send className="mr-2 h-4 w-4" />
+                                  Publish
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem
+                                onClick={() => setDeleteId(report.id)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -328,7 +375,11 @@ export default function ReportsList() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive">
-              Delete
+              {deleteReportMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                'Delete'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

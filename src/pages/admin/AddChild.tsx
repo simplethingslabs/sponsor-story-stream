@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useData } from '@/contexts/DataContext';
 import { AdminLayout } from '@/components/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,8 +16,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 import { AvatarUpload } from '@/components/media';
+import { useCreateChild } from '@/hooks/useApi';
 
 const childSchema = z.object({
   first_name: z.string().min(1, 'First name is required'),
@@ -48,9 +48,8 @@ const grades = [
 
 export default function AddChild() {
   const navigate = useNavigate();
-  const { addChild } = useData();
   const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const createChild = useCreateChild();
 
   const {
     register,
@@ -67,9 +66,8 @@ export default function AddChild() {
   });
 
   const onSubmit = async (data: ChildFormData) => {
-    setIsSubmitting(true);
     try {
-      addChild({
+      await createChild.mutateAsync({
         first_name: data.first_name,
         last_name: data.last_name,
         date_of_birth: data.date_of_birth,
@@ -86,11 +84,9 @@ export default function AddChild() {
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to add child. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to add child. Please try again.',
         variant: 'destructive',
       });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -247,9 +243,18 @@ export default function AddChild() {
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  <Save className="mr-2 h-4 w-4" />
-                  {isSubmitting ? 'Saving...' : 'Save Child'}
+                <Button type="submit" disabled={createChild.isPending}>
+                  {createChild.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Child
+                    </>
+                  )}
                 </Button>
               </div>
             </form>

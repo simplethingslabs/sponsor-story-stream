@@ -17,10 +17,10 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminLayout } from '@/components/layouts/AdminLayout';
 import { ImageUpload, type ImageFile } from '@/components/media';
+import { useCreateEvent } from '@/hooks/useApi';
 
 const eventSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -33,8 +33,8 @@ type EventFormData = z.infer<typeof eventSchema>;
 export default function AddEvent() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { addEvent } = useData();
   const { user } = useAuth();
+  const createEvent = useCreateEvent();
   const [images, setImages] = useState<ImageFile[]>([]);
 
   const form = useForm<EventFormData>({
@@ -48,22 +48,22 @@ export default function AddEvent() {
 
   const onSubmit = async (data: EventFormData) => {
     try {
-      // In a real app, images would be uploaded to storage first
-      addEvent({
+      await createEvent.mutateAsync({
         title: data.title,
         description: data.description,
         event_date: data.event_date,
         created_by: user?.id || 'unknown',
+        media: images.map((img) => ({ url: img.url, caption: img.caption })),
       });
       toast({
         title: 'Success',
         description: 'Event created successfully',
       });
-      navigate('/admin/events');
+      navigate('/dashboard/events');
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to create event',
+        description: error instanceof Error ? error.message : 'Failed to create event',
         variant: 'destructive',
       });
     }
@@ -157,12 +157,12 @@ export default function AddEvent() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => navigate('/admin/events')}
+                onClick={() => navigate('/dashboard/events')}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? (
+              <Button type="submit" disabled={createEvent.isPending}>
+                {createEvent.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Creating...

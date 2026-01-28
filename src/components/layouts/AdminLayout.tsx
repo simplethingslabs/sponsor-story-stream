@@ -17,6 +17,8 @@ import {
   Menu,
   GraduationCap,
   ChevronDown,
+  ClipboardList,
+  Trash2,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -40,8 +42,15 @@ const navigation = [
   { name: 'Sponsors', href: '/dashboard/sponsors', icon: UserPlus },
 ];
 
+const systemNavigation = [
+  { name: 'Audit Logs', href: '/dashboard/audit-logs', icon: ClipboardList },
+  { name: 'Trash', href: '/dashboard/trash', icon: Trash2 },
+];
+
 function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
   const location = useLocation();
+  const { hasRole } = useAuth();
+  const isSuperAdmin = hasRole('super_admin');
 
   return (
     <div className="flex h-full flex-col">
@@ -76,6 +85,37 @@ function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
             );
           })}
         </nav>
+
+        {/* System Section - Super Admin Only */}
+        {isSuperAdmin && (
+          <>
+            <div className="my-4 border-t border-border" />
+            <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              System
+            </p>
+            <nav className="space-y-1">
+              {systemNavigation.map((item) => {
+                const isActive = location.pathname === item.href || 
+                  location.pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    onClick={onLinkClick}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    }`}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </nav>
+          </>
+        )}
       </ScrollArea>
     </div>
   );
