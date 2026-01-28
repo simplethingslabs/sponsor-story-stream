@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useData } from '@/contexts/DataContext';
 import { AdminLayout } from '@/components/layouts/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,24 +14,53 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Search, Calendar, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, Calendar, Edit, Trash2, Loader2 } from 'lucide-react';
+import { useEvents, useDeleteEvent } from '@/hooks/useApi';
+import { useToast } from '@/hooks/use-toast';
 
 export default function EventsList() {
-  const { events, deleteEvent, getEventMedia } = useData();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { data: eventsData, isLoading, error } = useEvents();
+  const deleteEventMutation = useDeleteEvent();
+
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const events = eventsData?.data || [];
 
   const filteredEvents = events.filter((event) =>
     event.title.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteId) {
-      deleteEvent(deleteId);
+      try {
+        await deleteEventMutation.mutateAsync(deleteId);
+        toast({
+          title: 'Success',
+          description: 'Event deleted successfully',
+        });
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: error instanceof Error ? error.message : 'Failed to delete event',
+          variant: 'destructive',
+        });
+      }
       setDeleteId(null);
     }
   };
+
+  if (error) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-destructive">Error loading events: {error.message}</p>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
@@ -67,7 +95,11 @@ export default function EventsList() {
         </Card>
 
         {/* Events List */}
-        {filteredEvents.length === 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : filteredEvents.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Calendar className="h-12 w-12 text-muted-foreground" />
@@ -87,7 +119,7 @@ export default function EventsList() {
         ) : (
           <div className="space-y-4">
             {filteredEvents.map((event) => {
-              const media = getEventMedia(event.id);
+              const media = (event as any).media || [];
               return (
                 <Card key={event.id} className="overflow-hidden">
                   <div className="flex flex-col md:flex-row">
@@ -164,7 +196,11 @@ export default function EventsList() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive">
-              Delete
+              {deleteEventMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                'Delete'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useData } from '@/contexts/DataContext';
 import { AdminLayout } from '@/components/layouts/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,18 +20,32 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SearchFilterBar, type FilterConfig, type SortOption } from '@/components/SearchFilterBar';
-import { Plus, MoreHorizontal, Eye, UserCheck, Mail, UserX } from 'lucide-react';
+import { Plus, MoreHorizontal, Eye, UserCheck, Mail, Loader2 } from 'lucide-react';
+import { useSponsors, usePendingRegistrations, useSponsorships } from '@/hooks/useApi';
 
 export default function SponsorsList() {
   const navigate = useNavigate();
-  const { sponsors, getChildrenForSponsor, pendingRegistrations, deleteSponsor } = useData();
+  const { data: sponsorsData, isLoading, error } = useSponsors();
+  const { data: pendingData } = usePendingRegistrations();
+  const { data: sponsorshipsData } = useSponsorships();
+  
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState<Record<string, string>>({
     sponsorship: 'all',
   });
   const [sortBy, setSortBy] = useState('default');
 
+  const sponsors = sponsorsData?.data || [];
+  const pendingRegistrations = pendingData?.data || [];
+  const sponsorships = sponsorshipsData?.data || [];
   const pendingCount = pendingRegistrations.filter((r) => r.status === 'pending').length;
+
+  // Helper to get children for a sponsor
+  const getChildrenForSponsor = (sponsorId: string) => {
+    return sponsorships
+      .filter((s) => s.sponsor_id === sponsorId && s.status === 'active')
+      .map((s) => ({ id: s.child_id, first_name: (s as any).child?.first_name || 'Child' }));
+  };
 
   const filterConfigs: FilterConfig[] = [
     {
@@ -109,7 +122,7 @@ export default function SponsorsList() {
     }
 
     return result;
-  }, [sponsors, search, filters, sortBy, getChildrenForSponsor]);
+  }, [sponsors, search, filters, sortBy, sponsorships]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -120,6 +133,16 @@ export default function SponsorsList() {
     setFilters({ sponsorship: 'all' });
     setSortBy('default');
   };
+
+  if (error) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-destructive">Error loading sponsors: {error.message}</p>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
@@ -175,124 +198,120 @@ export default function SponsorsList() {
         {/* Table */}
         <Card>
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Sponsor</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Sponsored Children</TableHead>
-                  <TableHead>Since</TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredAndSortedSponsors.length === 0 ? (
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
-                      No sponsors found.
-                    </TableCell>
+                    <TableHead>Sponsor</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Sponsored Children</TableHead>
+                    <TableHead>Since</TableHead>
+                    <TableHead className="w-[100px]">Actions</TableHead>
                   </TableRow>
-                ) : (
-                  filteredAndSortedSponsors.map((sponsor) => {
-                    const sponsoredChildren = getChildrenForSponsor(sponsor.id);
-                    return (
-                      <TableRow
-                        key={sponsor.id}
-                        className="cursor-pointer"
-                        onClick={() => navigate(`/dashboard/sponsors/${sponsor.id}`)}
-                      >
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar>
-                              <AvatarImage src={sponsor.avatar_url} />
-                              <AvatarFallback className="bg-primary/10 text-primary">
-                                {sponsor.full_name
-                                  .split(' ')
-                                  .map((n) => n[0])
-                                  .join('')}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium">{sponsor.full_name}</p>
-                              {sponsor.phone && (
-                                <p className="text-sm text-muted-foreground">
-                                  {sponsor.phone}
-                                </p>
+                </TableHeader>
+                <TableBody>
+                  {filteredAndSortedSponsors.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="h-24 text-center">
+                        No sponsors found.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredAndSortedSponsors.map((sponsor) => {
+                      const sponsoredChildren = getChildrenForSponsor(sponsor.id);
+                      return (
+                        <TableRow
+                          key={sponsor.id}
+                          className="cursor-pointer"
+                          onClick={() => navigate(`/dashboard/sponsors/${sponsor.id}`)}
+                        >
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar>
+                                <AvatarImage src={sponsor.avatar_url} />
+                                <AvatarFallback className="bg-primary/10 text-primary">
+                                  {sponsor.full_name
+                                    .split(' ')
+                                    .map((n) => n[0])
+                                    .join('')}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium">{sponsor.full_name}</p>
+                                {sponsor.phone && (
+                                  <p className="text-sm text-muted-foreground">
+                                    {sponsor.phone}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>{sponsor.email}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {sponsoredChildren.length === 0 ? (
+                                <span className="text-muted-foreground">None</span>
+                              ) : (
+                                sponsoredChildren.map((child) => (
+                                  <Badge key={child.id} variant="secondary">
+                                    {child.first_name}
+                                  </Badge>
+                                ))
                               )}
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{sponsor.email}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {sponsoredChildren.length === 0 ? (
-                              <span className="text-muted-foreground">None</span>
-                            ) : (
-                              sponsoredChildren.map((child) => (
-                                <Badge key={child.id} variant="secondary">
-                                  {child.first_name}
-                                </Badge>
-                              ))
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(sponsor.created_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-background">
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/dashboard/sponsors/${sponsor.id}`);
-                                }}
-                              >
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/dashboard/sponsorships`);
-                                }}
-                              >
-                                <UserCheck className="mr-2 h-4 w-4" />
-                                Manage Sponsorships
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  window.location.href = `mailto:${sponsor.email}`;
-                                }}
-                              >
-                                <Mail className="mr-2 h-4 w-4" />
-                                Send Email
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  deleteSponsor(sponsor.id);
-                                }}
-                                className="text-destructive"
-                              >
-                                <UserX className="mr-2 h-4 w-4" />
-                                Remove Sponsor
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(sponsor.created_at).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-background">
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/dashboard/sponsors/${sponsor.id}`);
+                                  }}
+                                >
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/dashboard/sponsorships/${sponsor.id}`);
+                                  }}
+                                >
+                                  <UserCheck className="mr-2 h-4 w-4" />
+                                  Manage Sponsorships
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    window.location.href = `mailto:${sponsor.email}`;
+                                  }}
+                                >
+                                  <Mail className="mr-2 h-4 w-4" />
+                                  Send Email
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -23,9 +23,9 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { useData } from '@/contexts/DataContext';
 import { AdminLayout } from '@/components/layouts/AdminLayout';
 import { AvatarUpload } from '@/components/media';
+import { useChild, useUpdateChild } from '@/hooks/useApi';
 
 const childSchema = z.object({
   first_name: z.string().min(1, 'First name is required'),
@@ -48,9 +48,8 @@ export default function EditChild() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { children, updateChild } = useData();
-
-  const child = children.find((c) => c.id === id);
+  const { data: child, isLoading, error } = useChild(id || '');
+  const updateChild = useUpdateChild();
 
   const form = useForm<ChildFormData>({
     resolver: zodResolver(childSchema),
@@ -79,7 +78,17 @@ export default function EditChild() {
     }
   }, [child, form]);
 
-  if (!child) {
+  if (isLoading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  if (error || !child) {
     return (
       <AdminLayout>
         <div className="flex items-center justify-center h-64">
@@ -91,19 +100,22 @@ export default function EditChild() {
 
   const onSubmit = async (data: ChildFormData) => {
     try {
-      updateChild(id!, {
-        ...data,
-        photo_url: data.photo_url || undefined,
+      await updateChild.mutateAsync({
+        id: id!,
+        data: {
+          ...data,
+          photo_url: data.photo_url || undefined,
+        },
       });
       toast({
         title: 'Success',
         description: 'Child updated successfully',
       });
-      navigate('/admin/children');
+      navigate('/dashboard/children');
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to update child',
+        description: error instanceof Error ? error.message : 'Failed to update child',
         variant: 'destructive',
       });
     }
@@ -262,12 +274,12 @@ export default function EditChild() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => navigate('/admin/children')}
+                onClick={() => navigate('/dashboard/children')}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? (
+              <Button type="submit" disabled={updateChild.isPending}>
+                {updateChild.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Saving...

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useData } from '@/contexts/DataContext';
 import { AdminLayout } from '@/components/layouts/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,24 +14,53 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Search, Download, Trash2, FileText, Calendar } from 'lucide-react';
+import { Plus, Search, Download, Trash2, FileText, Calendar, Loader2 } from 'lucide-react';
+import { useNewsletters, useDeleteNewsletter } from '@/hooks/useApi';
+import { useToast } from '@/hooks/use-toast';
 
 export default function NewslettersList() {
-  const { newsletters, deleteNewsletter } = useData();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { data: newslettersData, isLoading, error } = useNewsletters();
+  const deleteNewsletterMutation = useDeleteNewsletter();
+
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const newsletters = newslettersData?.data || [];
 
   const filteredNewsletters = newsletters.filter((newsletter) =>
     newsletter.title.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteId) {
-      deleteNewsletter(deleteId);
+      try {
+        await deleteNewsletterMutation.mutateAsync(deleteId);
+        toast({
+          title: 'Success',
+          description: 'Newsletter deleted successfully',
+        });
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: error instanceof Error ? error.message : 'Failed to delete newsletter',
+          variant: 'destructive',
+        });
+      }
       setDeleteId(null);
     }
   };
+
+  if (error) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-destructive">Error loading newsletters: {error.message}</p>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
@@ -67,7 +95,11 @@ export default function NewslettersList() {
         </Card>
 
         {/* Newsletter Grid */}
-        {filteredNewsletters.length === 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : filteredNewsletters.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <FileText className="h-12 w-12 text-muted-foreground" />
@@ -109,7 +141,12 @@ export default function NewslettersList() {
                     {new Date(newsletter.published_date).toLocaleDateString()}
                   </div>
                   <div className="mt-4 flex gap-2">
-                    <Button variant="outline" size="sm" className="flex-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => window.open(newsletter.file_url, '_blank')}
+                    >
                       <Download className="mr-2 h-4 w-4" />
                       Download
                     </Button>
@@ -142,7 +179,11 @@ export default function NewslettersList() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive">
-              Delete
+              {deleteNewsletterMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                'Delete'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

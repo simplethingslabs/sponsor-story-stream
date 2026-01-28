@@ -5,7 +5,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -24,9 +23,8 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { useData } from '@/contexts/DataContext';
-import { useAuth } from '@/contexts/AuthContext';
 import { AdminLayout } from '@/components/layouts/AdminLayout';
+import { useReport, useUpdateReport, usePublishReport, useChildren } from '@/hooks/useApi';
 
 const reportSchema = z.object({
   child_id: z.string().min(1, 'Please select a child'),
@@ -43,9 +41,12 @@ export default function EditReport() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { children, reports, updateReport } = useData();
+  const { data: report, isLoading: isLoadingReport, error: reportError } = useReport(id || '');
+  const { data: childrenData } = useChildren();
+  const updateReport = useUpdateReport();
+  const publishReport = usePublishReport();
 
-  const report = reports.find((r) => r.id === id);
+  const children = childrenData?.data || [];
   const child = report ? children.find((c) => c.id === report.child_id) : null;
 
   const form = useForm<ReportFormData>({
@@ -73,7 +74,17 @@ export default function EditReport() {
     }
   }, [report, form]);
 
-  if (!report) {
+  if (isLoadingReport) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  if (reportError || !report) {
     return (
       <AdminLayout>
         <div className="flex items-center justify-center h-64">
@@ -85,20 +96,25 @@ export default function EditReport() {
 
   const onSubmit = async (data: ReportFormData, publish = false) => {
     try {
-      updateReport(id!, {
-        ...data,
-        status: publish ? 'published' : report.status,
-        published_at: publish ? new Date().toISOString() : report.published_at,
-      });
+      if (publish) {
+        await publishReport.mutateAsync({ id: id!, notify_sponsors: true });
+      } else {
+        await updateReport.mutateAsync({
+          id: id!,
+          data: {
+            ...data,
+          },
+        });
+      }
       toast({
         title: 'Success',
         description: publish ? 'Report published successfully' : 'Report updated successfully',
       });
-      navigate('/admin/reports');
+      navigate('/dashboard/reports');
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to update report',
+        description: error instanceof Error ? error.message : 'Failed to update report',
         variant: 'destructive',
       });
     }
@@ -106,6 +122,7 @@ export default function EditReport() {
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
+  const isPending = updateReport.isPending || publishReport.isPending;
 
   return (
     <AdminLayout>
@@ -282,12 +299,12 @@ export default function EditReport() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => navigate('/admin/reports')}
+                onClick={() => navigate('/dashboard/reports')}
               >
                 Cancel
               </Button>
-              <Button type="submit" variant="secondary" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? (
+              <Button type="submit" variant="secondary" disabled={isPending}>
+                {updateReport.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <Save className="mr-2 h-4 w-4" />
@@ -298,8 +315,9 @@ export default function EditReport() {
                 <Button
                   type="button"
                   onClick={form.handleSubmit((data) => onSubmit(data, true))}
-                  disabled={form.formState.isSubmitting}
+                  disabled={isPending}
                 >
+                  {publishReport.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Publish Report
                 </Button>
               )}

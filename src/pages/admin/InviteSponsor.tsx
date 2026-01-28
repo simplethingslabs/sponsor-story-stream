@@ -36,25 +36,22 @@ import {
   CheckCircle,
   XCircle,
   Link,
+  Loader2,
 } from 'lucide-react';
-import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
+import { useInvitations, useSendInvitation, useResendInvitation, useCancelInvitation } from '@/hooks/useApi';
 
 export default function InviteSponsor() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
-  const { sponsorInvitations, createInvitation, cancelInvitation, resendInvitation } = useData();
+  const { data: invitationsData, isLoading } = useInvitations();
+  const sendInvitation = useSendInvitation();
+  const resendInvitation = useResendInvitation();
+  const cancelInvitation = useCancelInvitation();
 
   const [email, setEmail] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const pendingInvitations = sponsorInvitations.filter((i) => i.status === 'pending');
-  const expiredInvitations = sponsorInvitations.filter((i) => {
-    const expiresAt = new Date(i.expires_at);
-    return i.status === 'pending' && expiresAt < new Date();
-  });
+  const sponsorInvitations = invitationsData?.data || [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,36 +79,52 @@ export default function InviteSponsor() {
       return;
     }
 
-    setIsSubmitting(true);
-    
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    
-    createInvitation(email.trim(), user?.id || 'admin-1');
-    
-    toast({
-      title: 'Invitation sent',
-      description: `An invitation has been sent to ${email}.`,
-    });
-    
-    setEmail('');
-    setIsSubmitting(false);
+    try {
+      await sendInvitation.mutateAsync({ email: email.trim() });
+      toast({
+        title: 'Invitation sent',
+        description: `An invitation has been sent to ${email}.`,
+      });
+      setEmail('');
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to send invitation',
+        variant: 'destructive',
+      });
+    }
   };
 
-  const handleResend = (id: string, email: string) => {
-    resendInvitation(id);
-    toast({
-      title: 'Invitation resent',
-      description: `The invitation to ${email} has been resent.`,
-    });
+  const handleResend = async (id: string, email: string) => {
+    try {
+      await resendInvitation.mutateAsync(id);
+      toast({
+        title: 'Invitation resent',
+        description: `The invitation to ${email} has been resent.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to resend invitation',
+        variant: 'destructive',
+      });
+    }
   };
 
-  const handleCancel = (id: string, email: string) => {
-    cancelInvitation(id);
-    toast({
-      title: 'Invitation cancelled',
-      description: `The invitation to ${email} has been cancelled.`,
-    });
+  const handleCancel = async (id: string, email: string) => {
+    try {
+      await cancelInvitation.mutateAsync(id);
+      toast({
+        title: 'Invitation cancelled',
+        description: `The invitation to ${email} has been cancelled.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to cancel invitation',
+        variant: 'destructive',
+      });
+    }
   };
 
   const copyInviteLink = () => {
@@ -177,9 +190,13 @@ export default function InviteSponsor() {
                     The recipient will receive an email with instructions to create their account.
                   </p>
                 </div>
-                <Button type="submit" className="w-full" disabled={isSubmitting}>
-                  <Send className="mr-2 h-4 w-4" />
-                  {isSubmitting ? 'Sending...' : 'Send Invitation'}
+                <Button type="submit" className="w-full" disabled={sendInvitation.isPending}>
+                  {sendInvitation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="mr-2 h-4 w-4" />
+                  )}
+                  {sendInvitation.isPending ? 'Sending...' : 'Send Invitation'}
                 </Button>
               </form>
             </CardContent>
@@ -239,7 +256,13 @@ export default function InviteSponsor() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sponsorInvitations.length === 0 ? (
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                      <Loader2 className="mx-auto h-6 w-6 animate-spin" />
+                    </TableCell>
+                  </TableRow>
+                ) : sponsorInvitations.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="h-24 text-center">
                       No invitations sent yet.
@@ -280,6 +303,7 @@ export default function InviteSponsor() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => handleResend(invitation.id, invitation.email)}
+                                disabled={resendInvitation.isPending}
                                 title="Resend"
                               >
                                 <RefreshCw className="h-4 w-4" />

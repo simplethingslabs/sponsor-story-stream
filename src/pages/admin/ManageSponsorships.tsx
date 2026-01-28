@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { AdminLayout } from '@/components/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,45 +7,75 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeft, Search, Save, Users } from 'lucide-react';
-import { useData } from '@/contexts/DataContext';
+import { ArrowLeft, Search, Save, Users, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { calculateAge } from '@/data/mockData';
+import { useSponsor, useChildren, useSponsorships, useAssignSponsorship, useRemoveSponsorship } from '@/hooks/useApi';
+
+function calculateAge(dateOfBirth: string): number {
+  const today = new Date();
+  const birthDate = new Date(dateOfBirth);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+}
 
 export default function ManageSponsorships() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const {
-    getSponsorById,
-    children,
-    sponsorships,
-    assignSponsor,
-    removeSponsor,
-  } = useData();
+  
+  const { data: sponsor, isLoading: isLoadingSponsor } = useSponsor(id || '');
+  const { data: childrenData, isLoading: isLoadingChildren } = useChildren({ status: 'active' });
+  const { data: sponsorshipsData } = useSponsorships({ sponsor_id: id });
+  const assignSponsorship = useAssignSponsorship();
+  const removeSponsorship = useRemoveSponsorship();
 
-  const sponsor = getSponsorById(id || '');
+  const children = childrenData?.data || [];
+  const sponsorships = sponsorshipsData?.data || [];
+  
   const [search, setSearch] = useState('');
   const [selectedChildren, setSelectedChildren] = useState<Set<string>>(() => {
-    const activeSponsored = sponsorships
-      .filter((s) => s.sponsor_id === id && s.status === 'active')
-      .map((s) => s.child_id);
-    return new Set(activeSponsored);
+    return new Set();
   });
 
-  const [initialSelection] = useState<Set<string>>(() => {
+  // Initialize selection from sponsorships
+  const initialSelection = useMemo(() => {
     const activeSponsored = sponsorships
-      .filter((s) => s.sponsor_id === id && s.status === 'active')
+      .filter((s) => s.status === 'active')
       .map((s) => s.child_id);
     return new Set(activeSponsored);
-  });
+  }, [sponsorships]);
+
+  // Update selected when sponsorships load
+  useMemo(() => {
+    if (sponsorships.length > 0 && selectedChildren.size === 0) {
+      const activeSponsored = sponsorships
+        .filter((s) => s.status === 'active')
+        .map((s) => s.child_id);
+      setSelectedChildren(new Set(activeSponsored));
+    }
+  }, [sponsorships]);
 
   const filteredChildren = children.filter(
     (child) =>
-      child.status === 'active' &&
-      (`${child.first_name} ${child.last_name}`.toLowerCase().includes(search.toLowerCase()) ||
-        child.grade.toLowerCase().includes(search.toLowerCase()))
+      `${child.first_name} ${child.last_name}`.toLowerCase().includes(search.toLowerCase()) ||
+      child.grade.toLowerCase().includes(search.toLowerCase())
   );
+
+  const isLoading = isLoadingSponsor || isLoadingChildren;
+
+  if (isLoading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </AdminLayout>
+    );
+  }
 
   if (!sponsor) {
     return (
@@ -73,37 +103,53 @@ export default function ManageSponsorships() {
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     let added = 0;
     let removed = 0;
 
-    // Find children to add
-    selectedChildren.forEach((childId) => {
-      if (!initialSelection.has(childId)) {
-        assignSponsor(id!, childId);
-        added++;
+    try {
+      // Find children to add
+      for (const childId of selectedChildren) {
+        if (!initialSelection.has(childId)) {
+          await assignSponsorship.mutateAsync({
+            sponsor_id: id!,
+            child_id: childId,
+          });
+          added++;
+        }
       }
-    });
 
-    // Find children to remove
-    initialSelection.forEach((childId) => {
-      if (!selectedChildren.has(childId)) {
-        removeSponsor(id!, childId);
-        removed++;
+      // Find children to remove
+      for (const childId of initialSelection) {
+        if (!selectedChildren.has(childId)) {
+          const sponsorship = sponsorships.find((s) => s.child_id === childId && s.status === 'active');
+          if (sponsorship) {
+            await removeSponsorship.mutateAsync({ id: sponsorship.id });
+            removed++;
+          }
+        }
       }
-    });
 
-    toast({
-      title: 'Sponsorships updated',
-      description: `Added ${added}, removed ${removed} sponsorship${added + removed !== 1 ? 's' : ''}.`,
-    });
+      toast({
+        title: 'Sponsorships updated',
+        description: `Added ${added}, removed ${removed} sponsorship${added + removed !== 1 ? 's' : ''}.`,
+      });
 
-    navigate(`/dashboard/sponsors/${id}`);
+      navigate(`/dashboard/sponsors/${id}`);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to update sponsorships',
+        variant: 'destructive',
+      });
+    }
   };
 
   const hasChanges =
     selectedChildren.size !== initialSelection.size ||
     [...selectedChildren].some((id) => !initialSelection.has(id));
+
+  const isPending = assignSponsorship.isPending || removeSponsorship.isPending;
 
   return (
     <AdminLayout>
@@ -119,8 +165,12 @@ export default function ManageSponsorships() {
               Assign or remove children for {sponsor.full_name}
             </p>
           </div>
-          <Button onClick={handleSave} disabled={!hasChanges}>
-            <Save className="mr-2 h-4 w-4" />
+          <Button onClick={handleSave} disabled={!hasChanges || isPending}>
+            {isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
             Save Changes
           </Button>
         </div>

@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useData } from '@/contexts/DataContext';
 import { AdminLayout } from '@/components/layouts/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -31,20 +30,36 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { SearchFilterBar, type FilterConfig, type SortOption } from '@/components/SearchFilterBar';
-import { Plus, MoreHorizontal, Edit, Trash2, Eye } from 'lucide-react';
-import { calculateAge } from '@/data/mockData';
+import { Plus, MoreHorizontal, Edit, Trash2, Eye, Loader2 } from 'lucide-react';
+import { useChildren, useDeleteChild } from '@/hooks/useApi';
+import { useToast } from '@/hooks/use-toast';
+
+function calculateAge(dateOfBirth: string): number {
+  const today = new Date();
+  const birthDate = new Date(dateOfBirth);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+}
 
 export default function ChildrenList() {
-  const { children, deleteChild, getSponsorsForChild } = useData();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { data: childrenData, isLoading, error } = useChildren();
+  const deleteChildMutation = useDeleteChild();
+  
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [filters, setFilters] = useState<Record<string, string>>({
     grade: 'all',
     status: 'all',
-    sponsorship: 'all',
   });
   const [sortBy, setSortBy] = useState('default');
+
+  const children = childrenData?.data || [];
 
   // Extract unique grades from children data
   const gradeOptions = useMemo(() => {
@@ -68,15 +83,6 @@ export default function ChildrenList() {
         { value: 'graduated', label: 'Graduated' },
       ],
       placeholder: 'Status',
-    },
-    {
-      key: 'sponsorship',
-      label: 'Sponsorship',
-      options: [
-        { value: 'sponsored', label: 'Sponsored' },
-        { value: 'unsponsored', label: 'Unsponsored' },
-      ],
-      placeholder: 'Sponsorship',
     },
   ];
 
@@ -106,17 +112,7 @@ export default function ChildrenList() {
       const matchesStatus =
         filters.status === 'all' || child.status === filters.status;
 
-      // Sponsorship filter
-      let matchesSponsorship = true;
-      if (filters.sponsorship !== 'all') {
-        const sponsors = getSponsorsForChild(child.id);
-        const isSponsored = sponsors.length > 0;
-        matchesSponsorship =
-          (filters.sponsorship === 'sponsored' && isSponsored) ||
-          (filters.sponsorship === 'unsponsored' && !isSponsored);
-      }
-
-      return matchesSearch && matchesGrade && matchesStatus && matchesSponsorship;
+      return matchesSearch && matchesGrade && matchesStatus;
     });
 
     // Sorting
@@ -158,7 +154,7 @@ export default function ChildrenList() {
     }
 
     return result;
-  }, [children, search, filters, sortBy, getSponsorsForChild]);
+  }, [children, search, filters, sortBy]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -166,16 +162,38 @@ export default function ChildrenList() {
 
   const handleClearAll = () => {
     setSearch('');
-    setFilters({ grade: 'all', status: 'all', sponsorship: 'all' });
+    setFilters({ grade: 'all', status: 'all' });
     setSortBy('default');
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteId) {
-      deleteChild(deleteId);
+      try {
+        await deleteChildMutation.mutateAsync(deleteId);
+        toast({
+          title: 'Success',
+          description: 'Child deleted successfully',
+        });
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: error instanceof Error ? error.message : 'Failed to delete child',
+          variant: 'destructive',
+        });
+      }
       setDeleteId(null);
     }
   };
+
+  if (error) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-destructive">Error loading children: {error.message}</p>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
@@ -220,90 +238,96 @@ export default function ChildrenList() {
         {/* Table */}
         <Card>
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Child</TableHead>
-                  <TableHead>Grade</TableHead>
-                  <TableHead>Age</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Enrolled</TableHead>
-                  <TableHead className="w-[80px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredAndSortedChildren.length === 0 ? (
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                      No children found.
-                    </TableCell>
+                    <TableHead>Child</TableHead>
+                    <TableHead>Grade</TableHead>
+                    <TableHead>Age</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Enrolled</TableHead>
+                    <TableHead className="w-[80px]">Actions</TableHead>
                   </TableRow>
-                ) : (
-                  filteredAndSortedChildren.map((child) => (
-                    <TableRow key={child.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar>
-                            <AvatarImage src={child.photo_url} />
-                            <AvatarFallback className="bg-primary/10 text-primary">
-                              {child.first_name[0]}
-                              {child.last_name[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium">
-                              {child.first_name} {child.last_name}
-                            </p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{child.grade}</TableCell>
-                      <TableCell>{calculateAge(child.date_of_birth)} years</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={child.status === 'active' ? 'default' : 'secondary'}
-                        >
-                          {child.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(child.enrollment_date).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="bg-background">
-                            <DropdownMenuItem
-                              onClick={() => navigate(`/dashboard/children/${child.id}`)}
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              View
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => navigate(`/dashboard/children/${child.id}/edit`)}
-                            >
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => setDeleteId(child.id)}
-                              className="text-destructive"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                </TableHeader>
+                <TableBody>
+                  {filteredAndSortedChildren.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="h-24 text-center">
+                        No children found.
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    filteredAndSortedChildren.map((child) => (
+                      <TableRow key={child.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar>
+                              <AvatarImage src={child.photo_url} />
+                              <AvatarFallback className="bg-primary/10 text-primary">
+                                {child.first_name[0]}
+                                {child.last_name[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">
+                                {child.first_name} {child.last_name}
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{child.grade}</TableCell>
+                        <TableCell>{calculateAge(child.date_of_birth)} years</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={child.status === 'active' ? 'default' : 'secondary'}
+                          >
+                            {child.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {new Date(child.enrollment_date).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="bg-background">
+                              <DropdownMenuItem
+                                onClick={() => navigate(`/dashboard/children/${child.id}`)}
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                View
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => navigate(`/dashboard/children/${child.id}/edit`)}
+                              >
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => setDeleteId(child.id)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -321,7 +345,11 @@ export default function ChildrenList() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive">
-              Delete
+              {deleteChildMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                'Delete'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

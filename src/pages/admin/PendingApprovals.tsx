@@ -32,34 +32,54 @@ import {
   Clock,
   UserCheck,
   UserX,
+  Loader2,
 } from 'lucide-react';
-import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePendingRegistrations, useApproveRegistration, useRejectRegistration } from '@/hooks/useApi';
 
 export default function PendingApprovals() {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { pendingRegistrations, approveRegistration, rejectRegistration } = useData();
+  const { data: registrationsData, isLoading } = usePendingRegistrations();
+  const approveRegistration = useApproveRegistration();
+  const rejectRegistration = useRejectRegistration();
   const [activeTab, setActiveTab] = useState<'pending' | 'reviewed'>('pending');
 
+  const pendingRegistrations = registrationsData?.data || [];
   const pending = pendingRegistrations.filter((r) => r.status === 'pending');
   const reviewed = pendingRegistrations.filter((r) => r.status !== 'pending');
 
-  const handleApprove = (id: string, name: string) => {
-    approveRegistration(id, user?.id || 'admin-1');
-    toast({
-      title: 'Registration approved',
-      description: `${name} has been approved as a sponsor.`,
-    });
+  const handleApprove = async (id: string, name: string) => {
+    try {
+      await approveRegistration.mutateAsync(id);
+      toast({
+        title: 'Registration approved',
+        description: `${name} has been approved as a sponsor.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to approve registration',
+        variant: 'destructive',
+      });
+    }
   };
 
-  const handleReject = (id: string, name: string) => {
-    rejectRegistration(id, user?.id || 'admin-1');
-    toast({
-      title: 'Registration rejected',
-      description: `${name}'s registration has been rejected.`,
-    });
+  const handleReject = async (id: string, name: string) => {
+    try {
+      await rejectRegistration.mutateAsync({ id });
+      toast({
+        title: 'Registration rejected',
+        description: `${name}'s registration has been rejected.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to reject registration',
+        variant: 'destructive',
+      });
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -83,6 +103,8 @@ export default function PendingApprovals() {
     if (diffHours > 0) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
     return 'Just now';
   };
+
+  const isPending = approveRegistration.isPending || rejectRegistration.isPending;
 
   return (
     <AdminLayout>
@@ -148,7 +170,13 @@ export default function PendingApprovals() {
           </TabsList>
 
           <TabsContent value="pending" className="mt-4">
-            {pending.length === 0 ? (
+            {isLoading ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
+                </CardContent>
+              </Card>
+            ) : pending.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center">
                   <CheckCircle className="mx-auto h-12 w-12 text-green-500" />
@@ -192,7 +220,7 @@ export default function PendingApprovals() {
                         <div className="flex gap-2">
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button variant="outline" size="sm">
+                              <Button variant="outline" size="sm" disabled={isPending}>
                                 <XCircle className="mr-2 h-4 w-4" />
                                 Reject
                               </Button>
@@ -219,8 +247,13 @@ export default function PendingApprovals() {
                           <Button
                             size="sm"
                             onClick={() => handleApprove(registration.id, registration.full_name)}
+                            disabled={isPending}
                           >
-                            <CheckCircle className="mr-2 h-4 w-4" />
+                            {approveRegistration.isPending ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                            )}
                             Approve
                           </Button>
                         </div>

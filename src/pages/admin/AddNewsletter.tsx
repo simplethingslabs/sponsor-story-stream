@@ -17,9 +17,9 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { useData } from '@/contexts/DataContext';
 import { AdminLayout } from '@/components/layouts/AdminLayout';
 import { FileUpload, ImageUpload, type UploadedFile, type ImageFile } from '@/components/media';
+import { useCreateNewsletter } from '@/hooks/useApi';
 
 const newsletterSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -34,7 +34,7 @@ type NewsletterFormData = z.infer<typeof newsletterSchema>;
 export default function AddNewsletter() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { addNewsletter } = useData();
+  const createNewsletter = useCreateNewsletter();
   const [pdfFiles, setPdfFiles] = useState<UploadedFile[]>([]);
   const [thumbnails, setThumbnails] = useState<ImageFile[]>([]);
 
@@ -61,7 +61,7 @@ export default function AddNewsletter() {
 
   const onSubmit = async (data: NewsletterFormData) => {
     try {
-      addNewsletter({
+      await createNewsletter.mutateAsync({
         title: data.title,
         description: data.description,
         published_date: data.published_date,
@@ -72,11 +72,11 @@ export default function AddNewsletter() {
         title: 'Success',
         description: 'Newsletter added successfully',
       });
-      navigate('/admin/newsletters');
+      navigate('/dashboard/newsletters');
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to add newsletter',
+        description: error instanceof Error ? error.message : 'Failed to add newsletter',
         variant: 'destructive',
       });
     }
@@ -206,12 +206,12 @@ export default function AddNewsletter() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => navigate('/admin/newsletters')}
+                onClick={() => navigate('/dashboard/newsletters')}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? (
+              <Button type="submit" disabled={createNewsletter.isPending}>
+                {createNewsletter.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Uploading...

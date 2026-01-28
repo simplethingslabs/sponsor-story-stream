@@ -1,43 +1,114 @@
 import type { ApiResponse } from '@/types';
 
 // Configure your backend API URL here
+// After deploying to Render, update this to your Render API URL
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+// Token refresh state
+let isRefreshing = false;
+let refreshSubscribers: ((token: string) => void)[] = [];
+
+function subscribeToRefresh(callback: (token: string) => void) {
+  refreshSubscribers.push(callback);
+}
+
+function onRefreshComplete(token: string) {
+  refreshSubscribers.forEach((callback) => callback(token));
+  refreshSubscribers = [];
+}
 
 class ApiClient {
   private baseUrl: string;
-  private token: string | null = null;
+  private accessToken: string | null = null;
+  private refreshToken: string | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
-    this.token = localStorage.getItem('auth_token');
+    this.accessToken = localStorage.getItem('auth_token');
+    this.refreshToken = localStorage.getItem('refresh_token');
   }
 
-  setToken(token: string | null) {
-    this.token = token;
-    if (token) {
-      localStorage.setItem('auth_token', token);
+  setTokens(accessToken: string | null, refreshToken?: string | null) {
+    this.accessToken = accessToken;
+    if (accessToken) {
+      localStorage.setItem('auth_token', accessToken);
     } else {
       localStorage.removeItem('auth_token');
+    }
+
+    if (refreshToken !== undefined) {
+      this.refreshToken = refreshToken;
+      if (refreshToken) {
+        localStorage.setItem('refresh_token', refreshToken);
+      } else {
+        localStorage.removeItem('refresh_token');
+      }
     }
   }
 
   getToken(): string | null {
-    return this.token;
+    return this.accessToken;
+  }
+
+  getRefreshToken(): string | null {
+    return this.refreshToken;
+  }
+
+  clearTokens() {
+    this.accessToken = null;
+    this.refreshToken = null;
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user');
+  }
+
+  private async refreshAccessToken(): Promise<string | null> {
+    if (!this.refreshToken) {
+      return null;
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refresh_token: this.refreshToken }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Token refresh failed');
+      }
+
+      const data = await response.json();
+      const newAccessToken = data.access_token || data.token;
+      const newRefreshToken = data.refresh_token;
+
+      this.setTokens(newAccessToken, newRefreshToken);
+      return newAccessToken;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      this.clearTokens();
+      // Redirect to login
+      window.location.href = '/login';
+      return null;
+    }
   }
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    retry = true
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`;
-    
+
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       ...options.headers,
     };
 
-    if (this.token) {
-      (headers as Record<string, string>)['Authorization'] = `Bearer ${this.token}`;
+    if (this.accessToken) {
+      (headers as Record<string, string>)['Authorization'] = `Bearer ${this.accessToken}`;
     }
 
     try {
@@ -46,11 +117,37 @@ class ApiClient {
         headers,
       });
 
+      // Handle 401 Unauthorized - try to refresh token
+      if (response.status === 401 && retry && this.refreshToken) {
+        // If already refreshing, wait for the refresh to complete
+        if (isRefreshing) {
+          return new Promise((resolve) => {
+            subscribeToRefresh(async (newToken) => {
+              (headers as Record<string, string>)['Authorization'] = `Bearer ${newToken}`;
+              const retryResponse = await this.request<T>(endpoint, options, false);
+              resolve(retryResponse);
+            });
+          });
+        }
+
+        isRefreshing = true;
+        const newToken = await this.refreshAccessToken();
+        isRefreshing = false;
+
+        if (newToken) {
+          onRefreshComplete(newToken);
+          // Retry the original request with new token
+          return this.request<T>(endpoint, options, false);
+        }
+
+        return { error: 'Session expired. Please login again.' };
+      }
+
       const data = await response.json();
 
       if (!response.ok) {
         return {
-          error: data.error || data.message || 'An error occurred',
+          error: data.error || data.message || `Request failed with status ${response.status}`,
         };
       }
 
@@ -58,7 +155,7 @@ class ApiClient {
     } catch (error) {
       console.error('API request failed:', error);
       return {
-        error: error instanceof Error ? error.message : 'Network error',
+        error: error instanceof Error ? error.message : 'Network error. Please check your connection.',
       };
     }
   }
@@ -93,10 +190,14 @@ class ApiClient {
   }
 
   // File upload helper
-  async uploadFile(endpoint: string, file: File, additionalData?: Record<string, string>): Promise<ApiResponse<{ url: string }>> {
+  async uploadFile(
+    endpoint: string,
+    file: File,
+    additionalData?: Record<string, string>
+  ): Promise<ApiResponse<{ url: string }>> {
     const formData = new FormData();
     formData.append('file', file);
-    
+
     if (additionalData) {
       Object.entries(additionalData).forEach(([key, value]) => {
         formData.append(key, value);
@@ -105,9 +206,9 @@ class ApiClient {
 
     const url = `${this.baseUrl}${endpoint}`;
     const headers: HeadersInit = {};
-    
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
+
+    if (this.accessToken) {
+      headers['Authorization'] = `Bearer ${this.accessToken}`;
     }
 
     try {

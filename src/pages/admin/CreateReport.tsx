@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminLayout } from '@/components/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,7 +17,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Save, Send } from 'lucide-react';
+import { ArrowLeft, Save, Send, Loader2 } from 'lucide-react';
+import { useChildren, useCreateReport } from '@/hooks/useApi';
 
 const reportSchema = z.object({
   child_id: z.string().min(1, 'Please select a child'),
@@ -33,10 +33,13 @@ type ReportFormData = z.infer<typeof reportSchema>;
 
 export default function CreateReport() {
   const navigate = useNavigate();
-  const { children, addReport } = useData();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { data: childrenData, isLoading: isLoadingChildren } = useChildren({ status: 'active' });
+  const createReport = useCreateReport();
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  const children = childrenData?.data || [];
 
   const {
     register,
@@ -52,12 +55,11 @@ export default function CreateReport() {
     },
   });
 
-  const activeChildren = children.filter((c) => c.status === 'active');
-
   const onSubmit = async (data: ReportFormData, publish: boolean = false) => {
-    setIsSubmitting(true);
+    if (publish) setIsPublishing(true);
+    
     try {
-      addReport({
+      await createReport.mutateAsync({
         child_id: data.child_id,
         quarter: data.quarter,
         year: data.year,
@@ -78,13 +80,15 @@ export default function CreateReport() {
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to save report. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to save report. Please try again.',
         variant: 'destructive',
       });
     } finally {
-      setIsSubmitting(false);
+      setIsPublishing(false);
     }
   };
+
+  const isPending = createReport.isPending;
 
   return (
     <AdminLayout>
@@ -123,11 +127,15 @@ export default function CreateReport() {
                         <SelectValue placeholder="Choose a child" />
                       </SelectTrigger>
                       <SelectContent>
-                        {activeChildren.map((child) => (
-                          <SelectItem key={child.id} value={child.id}>
-                            {child.first_name} {child.last_name}
-                          </SelectItem>
-                        ))}
+                        {isLoadingChildren ? (
+                          <SelectItem value="" disabled>Loading...</SelectItem>
+                        ) : (
+                          children.map((child) => (
+                            <SelectItem key={child.id} value={child.id}>
+                              {child.first_name} {child.last_name}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                     {errors.child_id && (
@@ -245,16 +253,24 @@ export default function CreateReport() {
               >
                 Cancel
               </Button>
-              <Button type="submit" variant="secondary" disabled={isSubmitting}>
-                <Save className="mr-2 h-4 w-4" />
+              <Button type="submit" variant="secondary" disabled={isPending}>
+                {isPending && !isPublishing ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="mr-2 h-4 w-4" />
+                )}
                 Save as Draft
               </Button>
               <Button
                 type="button"
-                disabled={isSubmitting}
+                disabled={isPending}
                 onClick={handleSubmit((data) => onSubmit(data, true))}
               >
-                <Send className="mr-2 h-4 w-4" />
+                {isPublishing ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="mr-2 h-4 w-4" />
+                )}
                 Publish Report
               </Button>
             </div>
