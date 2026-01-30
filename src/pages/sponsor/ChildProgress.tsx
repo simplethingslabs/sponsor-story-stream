@@ -5,8 +5,42 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Calendar, GraduationCap, FileText, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Calendar, GraduationCap, FileText, ChevronRight, Sparkles, Target, TrendingUp } from 'lucide-react';
 import { calculateAge } from '@/data/mockData';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+} from 'recharts';
+
+// Mock progress data for charts (will be replaced with real data in Phase 4)
+const generateProgressData = (reports: any[]) => {
+  const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+  return reports.slice(0, 4).reverse().map((report, index) => ({
+    quarter: `${report.quarter} ${report.year}`,
+    attendance: 85 + Math.floor(Math.random() * 15),
+    participation: 70 + Math.floor(Math.random() * 25),
+    academic: 75 + Math.floor(Math.random() * 20),
+  }));
+};
+
+const skillsData = [
+  { skill: 'Reading', value: 85 },
+  { skill: 'Writing', value: 78 },
+  { skill: 'Math', value: 82 },
+  { skill: 'Creativity', value: 90 },
+  { skill: 'Social Skills', value: 88 },
+  { skill: 'Participation', value: 85 },
+];
 
 export default function ChildProgress() {
   const { childId } = useParams();
@@ -15,6 +49,7 @@ export default function ChildProgress() {
 
   const child = getChildById(childId || '');
   const reports = getReportsForChild(childId || '');
+  const progressData = reports.length > 0 ? generateProgressData(reports) : [];
 
   if (!child) {
     return (
@@ -87,6 +122,154 @@ export default function ChildProgress() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Meet the Child Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Meet {child.first_name}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <h4 className="text-sm font-medium text-muted-foreground mb-2">About</h4>
+              <p className="text-foreground/90">
+                {child.first_name} is a bright and enthusiastic student who brings joy to everyone around. 
+                Known for curiosity and eagerness to learn, {child.first_name} has shown remarkable progress 
+                since joining our program.
+              </p>
+            </div>
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-accent/30">
+              <Target className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+              <div>
+                <h4 className="text-sm font-medium">Dreams & Goals</h4>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {child.first_name} dreams of becoming a teacher and helping other children learn. 
+                  With your support, this dream is becoming more achievable every day.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Progress Charts */}
+        {progressData.length > 0 && (
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Attendance & Progress Line Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  Progress Over Time
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={progressData}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis 
+                        dataKey="quarter" 
+                        tick={{ fontSize: 12 }}
+                        className="text-muted-foreground"
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 12 }}
+                        domain={[0, 100]}
+                        className="text-muted-foreground"
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="attendance" 
+                        stroke="hsl(var(--primary))" 
+                        strokeWidth={2}
+                        dot={{ fill: 'hsl(var(--primary))' }}
+                        name="Attendance %"
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="participation" 
+                        stroke="hsl(var(--accent))" 
+                        strokeWidth={2}
+                        dot={{ fill: 'hsl(var(--accent))' }}
+                        name="Participation %"
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="academic" 
+                        stroke="hsl(142, 60%, 45%)" 
+                        strokeWidth={2}
+                        dot={{ fill: 'hsl(142, 60%, 45%)' }}
+                        name="Academic %"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex justify-center gap-6 mt-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-primary" />
+                    <span className="text-muted-foreground">Attendance</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-accent" />
+                    <span className="text-muted-foreground">Participation</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'hsl(142, 60%, 45%)' }} />
+                    <span className="text-muted-foreground">Academic</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Skills Radar Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Sparkles className="h-5 w-5 text-accent" />
+                  Skills Overview
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart data={skillsData}>
+                      <PolarGrid className="stroke-muted" />
+                      <PolarAngleAxis 
+                        dataKey="skill" 
+                        tick={{ fontSize: 11 }}
+                        className="text-muted-foreground"
+                      />
+                      <PolarRadiusAxis 
+                        angle={30} 
+                        domain={[0, 100]}
+                        tick={{ fontSize: 10 }}
+                      />
+                      <Radar
+                        name="Skills"
+                        dataKey="value"
+                        stroke="hsl(var(--primary))"
+                        fill="hsl(var(--primary))"
+                        fillOpacity={0.3}
+                      />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+                <p className="text-xs text-center text-muted-foreground mt-2">
+                  Based on teacher assessments and quarterly evaluations
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Progress Timeline */}
         <div>
