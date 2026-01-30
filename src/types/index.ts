@@ -41,6 +41,8 @@ export interface Sponsorship {
 }
 
 // Progress Report Types
+export type ReportStatus = 'draft' | 'pending_review' | 'needs_revision' | 'approved' | 'published';
+
 export interface ProgressReport {
   id: string;
   child_id: string;
@@ -50,10 +52,17 @@ export interface ProgressReport {
   growth_narrative: string;
   activities: string;
   teacher_observations: string;
-  status: 'draft' | 'published';
+  status: ReportStatus;
   published_at?: string;
   created_at: string;
   updated_at: string;
+  // Phase 3: Quality control fields
+  submitted_at?: string;
+  reviewed_by?: string;
+  reviewed_at?: string;
+  feedback?: string;
+  word_count?: number;
+  media_count?: number;
 }
 
 export interface ReportMedia {
