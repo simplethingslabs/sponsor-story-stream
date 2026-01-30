@@ -36,6 +36,7 @@ import PendingApprovals from "./pages/admin/PendingApprovals";
 import InviteSponsor from "./pages/admin/InviteSponsor";
 import AuditLogs from "./pages/admin/AuditLogs";
 import Trash from "./pages/admin/Trash";
+import ReportReview from "./pages/admin/ReportReview";
 
 // Sponsor Pages
 import SponsorHome from "./pages/sponsor/SponsorHome";
@@ -75,6 +76,7 @@ const App = () => (
               <Route path="/dashboard/children/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><AddChild /></ProtectedRoute>} />
               <Route path="/dashboard/children/:id/edit" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><EditChild /></ProtectedRoute>} />
               <Route path="/dashboard/reports" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><ReportsList /></ProtectedRoute>} />
+              <Route path="/dashboard/reports/review" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><ReportReview /></ProtectedRoute>} />
               <Route path="/dashboard/reports/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><CreateReport /></ProtectedRoute>} />
               <Route path="/dashboard/reports/:id/edit" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><EditReport /></ProtectedRoute>} />
               <Route path="/dashboard/newsletters" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><NewslettersList /></ProtectedRoute>} />

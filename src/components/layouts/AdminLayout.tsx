@@ -37,6 +37,7 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Children', href: '/dashboard/children', icon: Users },
   { name: 'Progress Reports', href: '/dashboard/reports', icon: FileText },
+  { name: 'Report Review', href: '/dashboard/reports/review', icon: ClipboardList, adminOnly: true },
   { name: 'Newsletters', href: '/dashboard/newsletters', icon: Newspaper },
   { name: 'Events', href: '/dashboard/events', icon: Calendar },
   { name: 'Sponsors', href: '/dashboard/sponsors', icon: UserPlus },
@@ -66,8 +67,14 @@ function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
       <ScrollArea className="flex-1 px-3 py-4">
         <nav className="space-y-1">
           {navigation.map((item) => {
+            // Skip admin-only items for non-admins
+            if (item.adminOnly && !hasRole('super_admin') && !hasRole('admin')) {
+              return null;
+            }
+            
             const isActive = location.pathname === item.href || 
-              (item.href !== '/dashboard' && location.pathname.startsWith(item.href));
+              (item.href !== '/dashboard' && location.pathname.startsWith(item.href) && 
+               !(item.href === '/dashboard/reports' && location.pathname.includes('/review')));
             return (
               <Link
                 key={item.name}
