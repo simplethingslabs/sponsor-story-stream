@@ -17,8 +17,8 @@
     --popover: 40 25% 96%;
     --popover-foreground: 25 30% 15%;
 
-    /* Primary - Warm Terracotta/Coral */
-    --primary: 16 65% 55%;
+    /* Primary - Brand Orange #D36129 */
+    --primary: 20 68% 49%;
     --primary-foreground: 45 30% 98%;
 
     /* Secondary - Soft Sage Green */
@@ -71,7 +71,7 @@
     --popover: 25 20% 14%;
     --popover-foreground: 40 20% 90%;
 
-    --primary: 16 65% 60%;
+    --primary: 20 68% 54%;
     --primary-foreground: 25 25% 10%;
 
     --secondary: 120 10% 25%;
