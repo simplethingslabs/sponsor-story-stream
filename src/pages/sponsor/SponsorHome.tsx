@@ -2,15 +2,16 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { SponsorLayout } from '@/components/layouts/SponsorLayout';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Users, Clock, FileText, Heart } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Users, Clock, FileText, Heart, Calendar, ArrowRight, Sparkles } from 'lucide-react';
 import { calculateAge } from '@/data/mockData';
 
 export default function SponsorHome() {
   const { user } = useAuth();
-  const { getChildrenForSponsor, getReportsForChild } = useData();
+  const { getChildrenForSponsor, getReportsForChild, events, getEventMedia } = useData();
   const navigate = useNavigate();
 
   // Use demo sponsor ID for now
@@ -30,6 +31,9 @@ export default function SponsorHome() {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     return new Date(latestReport.published_at || latestReport.created_at) > thirtyDaysAgo;
   }).length;
+
+  // Get recent events (last 3)
+  const recentEvents = events.slice(0, 3);
 
   const stats = [
     {
@@ -141,6 +145,18 @@ export default function SponsorHome() {
                         </p>
                       </div>
                     </div>
+                    
+                    {/* Meet the child intro */}
+                    <div className="mt-3 p-3 rounded-lg bg-muted/50">
+                      <div className="flex items-center gap-1 text-xs font-medium text-primary mb-1">
+                        <Sparkles className="h-3 w-3" />
+                        Meet {child.first_name}
+                      </div>
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {child.first_name} is a bright and curious student who loves learning new things every day.
+                      </p>
+                    </div>
+                    
                     <p className="mt-3 text-sm text-muted-foreground">
                       {reports.length} quarterly {reports.length === 1 ? 'report' : 'reports'} available
                     </p>
@@ -149,6 +165,69 @@ export default function SponsorHome() {
               );
             })}
           </div>
+        </div>
+
+        {/* School Updates Feed */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">School Updates</h2>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/sponsor/events')}>
+              View All
+              <ArrowRight className="ml-1 h-4 w-4" />
+            </Button>
+          </div>
+          
+          {recentEvents.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-8">
+                <Calendar className="h-10 w-10 text-muted-foreground" />
+                <p className="mt-3 text-muted-foreground">No recent updates</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {recentEvents.map((event) => {
+                const media = getEventMedia(event.id);
+                const firstImage = media.find(m => m.type === 'image');
+                
+                return (
+                  <Card 
+                    key={event.id} 
+                    className="cursor-pointer transition-shadow hover:shadow-md"
+                    onClick={() => navigate('/sponsor/events')}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex gap-4">
+                        {firstImage && (
+                          <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden">
+                            <img
+                              src={firstImage.url}
+                              alt={event.title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                            <Calendar className="h-3 w-3" />
+                            {new Date(event.event_date).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </div>
+                          <h3 className="font-semibold truncate">{event.title}</h3>
+                          <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                            {event.description}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </SponsorLayout>
