@@ -1,8 +1,8 @@
-import type { Payment, Child, UserWithRoles } from '@/types';
+import type { Payment, Child, User } from '@/types';
 
 interface PaymentReceiptProps {
   payment: Payment;
-  sponsor?: UserWithRoles;
+  sponsor?: User;
   child?: Child;
 }
 

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,38 +25,61 @@ import {
   UserMinus,
   UserPlus,
   Trash2,
+  Loader2,
 } from 'lucide-react';
-import { useData } from '@/contexts/DataContext';
+import { useSponsor, useSponsorships, useChildren, useRemoveSponsorship, useAssignSponsorship } from '@/hooks/useApi';
 import { useToast } from '@/hooks/use-toast';
-import { calculateAge } from '@/data/mockData';
+
+function calculateAge(dateOfBirth: string): number {
+  const today = new Date();
+  const birthDate = new Date(dateOfBirth);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+}
 
 export default function SponsorDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const {
-    getSponsorById,
-    getChildrenForSponsor,
-    children,
-    sponsorships,
-    removeSponsor,
-    assignSponsor,
-    deleteSponsor,
-  } = useData();
+  
+  // Use real API hooks
+  const { data: sponsor, isLoading: sponsorLoading } = useSponsor(id || '');
+  const { data: sponsorshipsData, isLoading: sponsorshipsLoading } = useSponsorships({ sponsor_id: id });
+  const { data: childrenData, isLoading: childrenLoading } = useChildren();
+  const removeSponsorship = useRemoveSponsorship();
+  const assignSponsorship = useAssignSponsorship();
 
-  const sponsor = getSponsorById(id || '');
-  const sponsoredChildren = getChildrenForSponsor(id || '');
+  const sponsorships = sponsorshipsData?.data || [];
+  const children = childrenData?.data || [];
+
+  // Get sponsored children
+  const sponsoredChildIds = sponsorships
+    .filter(s => s.status === 'active')
+    .map(s => s.child_id);
+  const sponsoredChildren = children.filter(c => sponsoredChildIds.includes(c.id));
 
   // Get children not currently sponsored by this sponsor
-  const availableChildren = children.filter(
-    (child) =>
-      !sponsorships.some(
-        (s) => s.child_id === child.id && s.sponsor_id === id && s.status === 'active'
-      )
-  );
+  const availableChildren = children.filter(c => !sponsoredChildIds.includes(c.id));
 
-  // Get sponsorship history
-  const sponsorshipHistory = sponsorships.filter((s) => s.sponsor_id === id);
+  const isLoading = sponsorLoading || sponsorshipsLoading || childrenLoading;
+
+  if (isLoading) {
+    return (
+      <AdminLayout>
+        <div className="space-y-6">
+          <Skeleton className="h-10 w-64" />
+          <div className="grid gap-6 lg:grid-cols-3">
+            <Skeleton className="h-96" />
+            <Skeleton className="h-96 lg:col-span-2" />
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   if (!sponsor) {
     return (
@@ -71,29 +95,39 @@ export default function SponsorDetail() {
     );
   }
 
-  const handleRemoveChild = (childId: string, childName: string) => {
-    removeSponsor(id!, childId);
-    toast({
-      title: 'Child removed',
-      description: `${childName} is no longer sponsored by ${sponsor.full_name}.`,
-    });
+  const handleRemoveChild = async (sponsorshipId: string, childName: string) => {
+    try {
+      await removeSponsorship.mutateAsync({ id: sponsorshipId });
+      toast({
+        title: 'Child removed',
+        description: `${childName} is no longer sponsored by ${sponsor.full_name}.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to remove sponsorship',
+        variant: 'destructive',
+      });
+    }
   };
 
-  const handleAssignChild = (childId: string, childName: string) => {
-    assignSponsor(id!, childId);
-    toast({
-      title: 'Child assigned',
-      description: `${childName} is now sponsored by ${sponsor.full_name}.`,
-    });
-  };
-
-  const handleDeleteSponsor = () => {
-    deleteSponsor(id!);
-    toast({
-      title: 'Sponsor removed',
-      description: `${sponsor.full_name} has been removed from the system.`,
-    });
-    navigate('/dashboard/sponsors');
+  const handleAssignChild = async (childId: string, childName: string) => {
+    try {
+      await assignSponsorship.mutateAsync({
+        sponsor_id: id!,
+        child_id: childId,
+      });
+      toast({
+        title: 'Child assigned',
+        description: `${childName} is now sponsored by ${sponsor.full_name}.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to assign child',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -108,27 +142,6 @@ export default function SponsorDetail() {
             <h1 className="text-2xl font-bold text-foreground">Sponsor Details</h1>
             <p className="text-muted-foreground">View and manage sponsor information</p>
           </div>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Remove Sponsor
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Remove this sponsor?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will remove {sponsor.full_name} and end all their active sponsorships. This
-                  action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteSponsor}>Remove</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
@@ -185,13 +198,6 @@ export default function SponsorDetail() {
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>Sponsored Children</span>
-                <Button
-                  size="sm"
-                  onClick={() => navigate(`/dashboard/sponsors/${id}/manage`)}
-                >
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Manage Assignments
-                </Button>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -202,7 +208,7 @@ export default function SponsorDetail() {
               ) : (
                 <div className="space-y-4">
                   {sponsoredChildren.map((child) => {
-                    const sponsorship = sponsorshipHistory.find(
+                    const sponsorship = sponsorships.find(
                       (s) => s.child_id === child.id && s.status === 'active'
                     );
                     return (
@@ -232,8 +238,12 @@ export default function SponsorDetail() {
                         </div>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <UserMinus className="mr-2 h-4 w-4" />
+                            <Button variant="ghost" size="sm" disabled={removeSponsorship.isPending}>
+                              {removeSponsorship.isPending ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <UserMinus className="mr-2 h-4 w-4" />
+                              )}
                               Remove
                             </Button>
                           </AlertDialogTrigger>
@@ -248,9 +258,7 @@ export default function SponsorDetail() {
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
                               <AlertDialogAction
-                                onClick={() =>
-                                  handleRemoveChild(child.id, child.first_name)
-                                }
+                                onClick={() => sponsorship && handleRemoveChild(sponsorship.id, child.first_name)}
                               >
                                 Remove
                               </AlertDialogAction>
@@ -283,8 +291,13 @@ export default function SponsorDetail() {
                     variant="outline"
                     size="sm"
                     onClick={() => handleAssignChild(child.id, child.first_name)}
+                    disabled={assignSponsorship.isPending}
                   >
-                    <UserPlus className="mr-2 h-4 w-4" />
+                    {assignSponsorship.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <UserPlus className="mr-2 h-4 w-4" />
+                    )}
                     {child.first_name} {child.last_name}
                   </Button>
                 ))}
@@ -308,11 +321,11 @@ export default function SponsorDetail() {
             <CardTitle>Sponsorship History</CardTitle>
           </CardHeader>
           <CardContent>
-            {sponsorshipHistory.length === 0 ? (
+            {sponsorships.length === 0 ? (
               <p className="py-4 text-center text-muted-foreground">No sponsorship history.</p>
             ) : (
               <div className="space-y-2">
-                {sponsorshipHistory.map((sp) => {
+                {sponsorships.map((sp) => {
                   const child = children.find((c) => c.id === sp.child_id);
                   return (
                     <div

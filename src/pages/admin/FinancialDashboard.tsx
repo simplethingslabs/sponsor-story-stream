@@ -1,14 +1,13 @@
 import { AdminLayout } from '@/components/layouts/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   IndianRupee, 
   TrendingUp, 
   AlertCircle, 
   Clock,
   ArrowUpRight,
-  ArrowDownRight,
   PlusCircle,
   Bell,
   FileText,
@@ -27,36 +26,27 @@ import {
   Cell,
   Legend,
 } from 'recharts';
-import { mockPayments, getPaymentStats, mockSponsors, mockChildren } from '@/data/mockData';
-
-// Monthly collection trend data
-const collectionTrend = [
-  { month: 'Aug', amount: 45000 },
-  { month: 'Sep', amount: 52000 },
-  { month: 'Oct', amount: 48000 },
-  { month: 'Nov', amount: 55000 },
-  { month: 'Dec', amount: 62000 },
-  { month: 'Jan', amount: 58000 },
-];
+import { usePaymentStats, usePayments } from '@/hooks/useApi';
 
 export default function FinancialDashboard() {
-  const stats = getPaymentStats();
-  
-  // Status breakdown for pie chart
-  const statusBreakdown = [
-    { name: 'Paid', value: mockPayments.filter(p => p.status === 'paid').length, color: 'hsl(var(--chart-2))' },
-    { name: 'Pending', value: mockPayments.filter(p => p.status === 'pending').length, color: 'hsl(var(--chart-4))' },
-    { name: 'Overdue', value: mockPayments.filter(p => p.status === 'overdue').length, color: 'hsl(var(--destructive))' },
-  ];
+  const { data: stats, isLoading: statsLoading } = usePaymentStats();
+  const { data: paymentsData, isLoading: paymentsLoading } = usePayments({ status: 'overdue', limit: '5' });
 
-  // Recent overdue payments
-  const overduePayments = mockPayments
-    .filter(p => p.status === 'overdue')
-    .map(p => ({
-      ...p,
-      sponsor: mockSponsors.find(s => s.id === p.sponsor_id),
-      child: mockChildren.find(c => c.id === p.child_id),
-    }));
+  const overduePayments = paymentsData?.data || [];
+
+  // Collection trend from API or fallback
+  const collectionTrend = stats?.collectionTrend || [];
+
+  // Status breakdown for pie chart
+  const statusBreakdown = stats?.statusBreakdown?.map(s => ({
+    name: s.status.charAt(0).toUpperCase() + s.status.slice(1),
+    value: s.count,
+    color: s.status === 'paid' 
+      ? 'hsl(var(--chart-2))' 
+      : s.status === 'pending' 
+        ? 'hsl(var(--chart-4))' 
+        : 'hsl(var(--destructive))',
+  })) || [];
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -65,6 +55,8 @@ export default function FinancialDashboard() {
       maximumFractionDigits: 0,
     }).format(amount);
   };
+
+  const isLoading = statsLoading || paymentsLoading;
 
   return (
     <AdminLayout>
@@ -95,11 +87,17 @@ export default function FinancialDashboard() {
               <IndianRupee className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(stats.totalCollected)}</div>
-              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                <ArrowUpRight className="h-3 w-3 text-green-500" />
-                <span className="text-green-500">12%</span> from last month
-              </p>
+              {statsLoading ? (
+                <Skeleton className="h-8 w-24" />
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">{formatCurrency(stats?.totalCollected || 0)}</div>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                    <ArrowUpRight className="h-3 w-3 text-green-500" />
+                    <span className="text-green-500">12%</span> from last month
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -111,10 +109,16 @@ export default function FinancialDashboard() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(stats.thisMonthCollected)}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Collected in January 2026
-              </p>
+              {statsLoading ? (
+                <Skeleton className="h-8 w-24" />
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">{formatCurrency(stats?.thisMonthCollected || 0)}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Collected this month
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -126,10 +130,16 @@ export default function FinancialDashboard() {
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(stats.pendingAmount)}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {stats.pendingCount} payment{stats.pendingCount !== 1 ? 's' : ''} due
-              </p>
+              {statsLoading ? (
+                <Skeleton className="h-8 w-24" />
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">{formatCurrency(stats?.pendingAmount || 0)}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {stats?.pendingCount || 0} payment{(stats?.pendingCount || 0) !== 1 ? 's' : ''} due
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -141,10 +151,16 @@ export default function FinancialDashboard() {
               <AlertCircle className="h-4 w-4 text-destructive" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-destructive">{formatCurrency(stats.overdueAmount)}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {stats.overdueCount} payment{stats.overdueCount !== 1 ? 's' : ''} overdue
-              </p>
+              {statsLoading ? (
+                <Skeleton className="h-8 w-24" />
+              ) : (
+                <>
+                  <div className="text-2xl font-bold text-destructive">{formatCurrency(stats?.overdueAmount || 0)}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {stats?.overdueCount || 0} payment{(stats?.overdueCount || 0) !== 1 ? 's' : ''} overdue
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -159,31 +175,41 @@ export default function FinancialDashboard() {
             </CardHeader>
             <CardContent>
               <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={collectionTrend}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="month" className="text-xs" />
-                    <YAxis 
-                      tickFormatter={(value) => `₹${value/1000}k`}
-                      className="text-xs"
-                    />
-                    <Tooltip 
-                      formatter={(value: number) => [formatCurrency(value), 'Collected']}
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px',
-                      }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="amount" 
-                      stroke="hsl(var(--primary))" 
-                      strokeWidth={2}
-                      dot={{ fill: 'hsl(var(--primary))' }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                {statsLoading ? (
+                  <div className="h-full flex items-center justify-center">
+                    <Skeleton className="h-full w-full" />
+                  </div>
+                ) : collectionTrend.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-muted-foreground">
+                    No payment data available yet
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={collectionTrend}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis dataKey="month" className="text-xs" />
+                      <YAxis 
+                        tickFormatter={(value) => `₹${value/1000}k`}
+                        className="text-xs"
+                      />
+                      <Tooltip 
+                        formatter={(value: number) => [formatCurrency(value), 'Collected']}
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="amount" 
+                        stroke="hsl(var(--primary))" 
+                        strokeWidth={2}
+                        dot={{ fill: 'hsl(var(--primary))' }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -196,25 +222,35 @@ export default function FinancialDashboard() {
             </CardHeader>
             <CardContent>
               <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={statusBreakdown}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={90}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {statusBreakdown.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
+                {statsLoading ? (
+                  <div className="h-full flex items-center justify-center">
+                    <Skeleton className="h-full w-full" />
+                  </div>
+                ) : statusBreakdown.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-muted-foreground">
+                    No payment data available yet
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={statusBreakdown}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={90}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {statusBreakdown.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -268,7 +304,13 @@ export default function FinancialDashboard() {
               <CardDescription>Payments that need immediate attention</CardDescription>
             </CardHeader>
             <CardContent>
-              {overduePayments.length === 0 ? (
+              {paymentsLoading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-20 w-full" />
+                  ))}
+                </div>
+              ) : overduePayments.length === 0 ? (
                 <p className="text-center text-muted-foreground py-6">
                   No overdue payments! 🎉
                 </p>
@@ -280,9 +322,9 @@ export default function FinancialDashboard() {
                       className="flex items-center justify-between p-3 rounded-lg border bg-destructive/5 border-destructive/20"
                     >
                       <div>
-                        <p className="font-medium">{payment.sponsor?.full_name}</p>
+                        <p className="font-medium">{payment.sponsor_name}</p>
                         <p className="text-sm text-muted-foreground">
-                          For {payment.child?.first_name} {payment.child?.last_name}
+                          For {payment.child_name || 'General Support'}
                         </p>
                         <p className="text-xs text-destructive mt-1">
                           Due: {new Date(payment.due_date).toLocaleDateString('en-IN')}

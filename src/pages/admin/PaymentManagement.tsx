@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -39,10 +40,11 @@ import {
   FileText,
   Download,
   Filter,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useReactToPrint } from 'react-to-print';
-import { mockPayments, mockSponsors, mockChildren } from '@/data/mockData';
+import { usePayments, useSponsors, useChildren, useCreatePayment, useMarkPaymentPaid } from '@/hooks/useApi';
 import { PaymentReceipt } from '@/components/payments/PaymentReceipt';
 import type { Payment, PaymentStatus, PaymentMethod } from '@/types';
 
@@ -76,19 +78,27 @@ export default function PaymentManagement() {
     contentRef: receiptRef,
   });
 
-  // Filter payments
-  const filteredPayments = mockPayments.filter(payment => {
-    const sponsor = mockSponsors.find(s => s.id === payment.sponsor_id);
-    const child = mockChildren.find(c => c.id === payment.child_id);
-    
-    const matchesStatus = statusFilter === 'all' || payment.status === statusFilter;
+  // Use real API hooks
+  const { data: paymentsData, isLoading: paymentsLoading } = usePayments({ 
+    status: statusFilter !== 'all' ? statusFilter : undefined 
+  });
+  const { data: sponsorsData } = useSponsors();
+  const { data: childrenData } = useChildren();
+  const createPayment = useCreatePayment();
+  const markPaymentPaid = useMarkPaymentPaid();
+
+  const payments = paymentsData?.data || [];
+  const sponsors = sponsorsData?.data || [];
+  const children = childrenData?.data || [];
+
+  // Filter payments by search
+  const filteredPayments = payments.filter(payment => {
     const matchesSearch = !searchQuery || 
-      sponsor?.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      child?.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      child?.last_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      payment.sponsor_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      payment.child_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       payment.receipt_number?.toLowerCase().includes(searchQuery.toLowerCase());
     
-    return matchesStatus && matchesSearch;
+    return matchesSearch;
   });
 
   const formatCurrency = (amount: number) => {
@@ -99,19 +109,46 @@ export default function PaymentManagement() {
     }).format(amount);
   };
 
-  const handleRecordPayment = (e: React.FormEvent) => {
+  const handleRecordPayment = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    toast.success('Payment recorded successfully');
-    setRecordDialogOpen(false);
+    const formData = new FormData(e.currentTarget);
+    
+    try {
+      await createPayment.mutateAsync({
+        sponsor_id: formData.get('sponsor') as string,
+        child_id: formData.get('child') as string || undefined,
+        amount: parseFloat(formData.get('amount') as string),
+        payment_method: formData.get('method') as PaymentMethod,
+        payment_date: formData.get('payment_date') as string,
+        due_date: formData.get('payment_date') as string,
+        reference_number: formData.get('reference') as string || undefined,
+        notes: formData.get('notes') as string || undefined,
+        status: 'paid',
+      } as any);
+      toast.success('Payment recorded successfully');
+      setRecordDialogOpen(false);
+    } catch (error) {
+      toast.error('Failed to record payment');
+    }
   };
 
-  const handleMarkAsPaid = (payment: Payment) => {
-    toast.success(`Payment marked as paid for ${mockSponsors.find(s => s.id === payment.sponsor_id)?.full_name}`);
+  const handleMarkAsPaid = async (payment: Payment) => {
+    try {
+      await markPaymentPaid.mutateAsync({
+        id: payment.id,
+        data: {
+          payment_method: 'bank_transfer',
+          payment_date: new Date().toISOString().split('T')[0],
+        },
+      });
+      toast.success(`Payment marked as paid`);
+    } catch (error) {
+      toast.error('Failed to mark payment as paid');
+    }
   };
 
   const handleSendReminder = (payment: Payment) => {
-    const sponsor = mockSponsors.find(s => s.id === payment.sponsor_id);
-    toast.success(`Reminder sent to ${sponsor?.full_name}`);
+    toast.success(`Reminder sent to ${payment.sponsor_name}`);
   };
 
   const handleViewReceipt = (payment: Payment) => {
@@ -145,12 +182,12 @@ export default function PaymentManagement() {
               <form onSubmit={handleRecordPayment} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="sponsor">Sponsor</Label>
-                  <Select required>
+                  <Select name="sponsor" required>
                     <SelectTrigger>
                       <SelectValue placeholder="Select sponsor" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockSponsors.map(sponsor => (
+                      {sponsors.map(sponsor => (
                         <SelectItem key={sponsor.id} value={sponsor.id}>
                           {sponsor.full_name}
                         </SelectItem>
@@ -160,12 +197,12 @@ export default function PaymentManagement() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="child">Child (Optional)</Label>
-                  <Select>
+                  <Select name="child">
                     <SelectTrigger>
                       <SelectValue placeholder="Select child" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockChildren.map(child => (
+                      {children.map(child => (
                         <SelectItem key={child.id} value={child.id}>
                           {child.first_name} {child.last_name}
                         </SelectItem>
@@ -178,6 +215,7 @@ export default function PaymentManagement() {
                     <Label htmlFor="amount">Amount (₹)</Label>
                     <Input 
                       id="amount" 
+                      name="amount"
                       type="number" 
                       placeholder="2500" 
                       required 
@@ -185,7 +223,7 @@ export default function PaymentManagement() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="method">Payment Method</Label>
-                    <Select required>
+                    <Select name="method" required>
                       <SelectTrigger>
                         <SelectValue placeholder="Select" />
                       </SelectTrigger>
@@ -201,22 +239,25 @@ export default function PaymentManagement() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="payment_date">Payment Date</Label>
-                    <Input id="payment_date" type="date" required />
+                    <Input id="payment_date" name="payment_date" type="date" required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="reference">Reference Number</Label>
-                    <Input id="reference" placeholder="UPI/NEFT/Cheque #" />
+                    <Input id="reference" name="reference" placeholder="UPI/NEFT/Cheque #" />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="notes">Notes</Label>
-                  <Textarea id="notes" placeholder="Any additional notes..." />
+                  <Textarea id="notes" name="notes" placeholder="Any additional notes..." />
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setRecordDialogOpen(false)}>
                     Cancel
                   </Button>
-                  <Button type="submit">Record Payment</Button>
+                  <Button type="submit" disabled={createPayment.isPending}>
+                    {createPayment.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Record Payment
+                  </Button>
                 </DialogFooter>
               </form>
             </DialogContent>
@@ -265,85 +306,97 @@ export default function PaymentManagement() {
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Sponsor</TableHead>
-                    <TableHead>Child</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Due Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Method</TableHead>
-                    <TableHead>Receipt #</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredPayments.map((payment) => {
-                    const sponsor = mockSponsors.find(s => s.id === payment.sponsor_id);
-                    const child = mockChildren.find(c => c.id === payment.child_id);
-                    
-                    return (
-                      <TableRow key={payment.id}>
-                        <TableCell className="font-medium">
-                          {sponsor?.full_name || 'Unknown'}
-                        </TableCell>
-                        <TableCell>
-                          {child ? `${child.first_name} ${child.last_name}` : '-'}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {formatCurrency(payment.amount)}
-                        </TableCell>
-                        <TableCell>
-                          {new Date(payment.due_date).toLocaleDateString('en-IN')}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={statusColors[payment.status]}>
-                            {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {payment.payment_method ? methodLabels[payment.payment_method] : '-'}
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">
-                          {payment.receipt_number || '-'}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            {payment.status === 'paid' && (
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => handleViewReceipt(payment)}
-                              >
-                                <FileText className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {(payment.status === 'pending' || payment.status === 'overdue') && (
-                              <>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={() => handleMarkAsPaid(payment)}
-                                >
-                                  <CheckCircle2 className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={() => handleSendReminder(payment)}
-                                >
-                                  <Bell className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
+              {paymentsLoading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={i} className="h-16 w-full" />
+                  ))}
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Sponsor</TableHead>
+                      <TableHead>Child</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Due Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Method</TableHead>
+                      <TableHead>Receipt #</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredPayments.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                          No payments found
                         </TableCell>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                    ) : (
+                      filteredPayments.map((payment) => (
+                        <TableRow key={payment.id}>
+                          <TableCell className="font-medium">
+                            {payment.sponsor_name || 'Unknown'}
+                          </TableCell>
+                          <TableCell>
+                            {payment.child_name || '-'}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {formatCurrency(payment.amount)}
+                          </TableCell>
+                          <TableCell>
+                            {new Date(payment.due_date).toLocaleDateString('en-IN')}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={statusColors[payment.status as PaymentStatus]}>
+                              {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {payment.payment_method ? methodLabels[payment.payment_method as PaymentMethod] : '-'}
+                          </TableCell>
+                          <TableCell className="font-mono text-sm">
+                            {payment.receipt_number || '-'}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {payment.status === 'paid' && (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => handleViewReceipt(payment)}
+                                >
+                                  <FileText className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {(payment.status === 'pending' || payment.status === 'overdue') && (
+                                <>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={() => handleMarkAsPaid(payment)}
+                                    disabled={markPaymentPaid.isPending}
+                                  >
+                                    <CheckCircle2 className="h-4 w-4" />
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={() => handleSendReminder(payment)}
+                                  >
+                                    <Bell className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -362,8 +415,8 @@ export default function PaymentManagement() {
                 <div ref={receiptRef}>
                   <PaymentReceipt 
                     payment={selectedPayment}
-                    sponsor={mockSponsors.find(s => s.id === selectedPayment.sponsor_id)}
-                    child={mockChildren.find(c => c.id === selectedPayment.child_id)}
+                    sponsor={sponsors.find(s => s.id === selectedPayment.sponsor_id)}
+                    child={children.find(c => c.id === selectedPayment.child_id)}
                   />
                 </div>
                 <DialogFooter>

@@ -163,6 +163,9 @@ export interface Payment {
   notes?: string;
   created_at: string;
   updated_at: string;
+  // Joined fields from API
+  sponsor_name?: string;
+  child_name?: string;
 }
 
 // Auth Types

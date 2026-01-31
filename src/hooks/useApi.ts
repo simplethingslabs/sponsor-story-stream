@@ -34,6 +34,9 @@ export const queryKeys = {
   notifications: ['notifications'] as const,
   auditLogs: ['audit-logs'] as const,
   trash: ['trash'] as const,
+  payments: ['payments'] as const,
+  payment: (id: string) => ['payments', id] as const,
+  paymentStats: ['payment-stats'] as const,
 };
 
 // ============ Children Hooks ============
@@ -675,6 +678,117 @@ export function useUploadFile() {
       const response = await api.uploadFile(`/upload/${type}`, file, folder ? { folder } : undefined);
       if (response.error) throw new Error(response.error);
       return response.data!;
+    },
+  });
+}
+
+// ============ Payments Hooks ============
+import type { Payment } from '@/types';
+
+export interface PaymentStats {
+  totalCollected: number;
+  thisMonthCollected: number;
+  pendingAmount: number;
+  pendingCount: number;
+  overdueAmount: number;
+  overdueCount: number;
+  collectionTrend: { month: string; amount: number }[];
+  statusBreakdown: { status: string; count: number }[];
+}
+
+export function usePayments(params?: Record<string, any>) {
+  return useQuery({
+    queryKey: [...queryKeys.payments, params],
+    queryFn: async () => {
+      const queryString = params ? `?${new URLSearchParams(params).toString()}` : '';
+      const response = await api.get<PaginatedResponse<Payment & { sponsor_name: string; child_name: string }>>(`/payments${queryString}`);
+      if (response.error) throw new Error(response.error);
+      return response.data!;
+    },
+  });
+}
+
+export function usePayment(id: string) {
+  return useQuery({
+    queryKey: queryKeys.payment(id),
+    queryFn: async () => {
+      const response = await api.get<Payment>(`/payments/${id}`);
+      if (response.error) throw new Error(response.error);
+      return response.data!;
+    },
+    enabled: !!id,
+  });
+}
+
+export function usePaymentStats() {
+  return useQuery({
+    queryKey: queryKeys.paymentStats,
+    queryFn: async () => {
+      const response = await api.get<PaymentStats>('/payments/stats');
+      if (response.error) throw new Error(response.error);
+      return response.data!;
+    },
+  });
+}
+
+export function useCreatePayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: Partial<Payment>) => {
+      const response = await api.post<Payment>('/payments', data);
+      if (response.error) throw new Error(response.error);
+      return response.data!;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.payments });
+      queryClient.invalidateQueries({ queryKey: queryKeys.paymentStats });
+    },
+  });
+}
+
+export function useUpdatePayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Payment> }) => {
+      const response = await api.put<Payment>(`/payments/${id}`, data);
+      if (response.error) throw new Error(response.error);
+      return response.data!;
+    },
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.payments });
+      queryClient.invalidateQueries({ queryKey: queryKeys.payment(id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.paymentStats });
+    },
+  });
+}
+
+export function useMarkPaymentPaid() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: { payment_method: string; payment_date?: string; reference_number?: string; notes?: string } }) => {
+      const response = await api.put<Payment>(`/payments/${id}/mark-paid`, data);
+      if (response.error) throw new Error(response.error);
+      return response.data!;
+    },
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.payments });
+      queryClient.invalidateQueries({ queryKey: queryKeys.payment(id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.paymentStats });
+    },
+  });
+}
+
+export function useDeletePayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.delete(`/payments/${id}`);
+      if (response.error) throw new Error(response.error);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.payments });
+      queryClient.invalidateQueries({ queryKey: queryKeys.paymentStats });
     },
   });
 }

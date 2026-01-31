@@ -1,19 +1,30 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useData } from '@/contexts/DataContext';
+import { useChildren, useReports, useEvents } from '@/hooks/useApi';
 import { AdminLayout } from '@/components/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Users, FileText, Newspaper, Calendar, Plus, TrendingUp, Clock } from 'lucide-react';
 
 export default function AdminDashboard() {
   const { user } = useAuth();
-  const { children, reports, newsletters, events } = useData();
   const navigate = useNavigate();
+  
+  // Use real API hooks instead of mock data
+  const { data: childrenData, isLoading: childrenLoading } = useChildren();
+  const { data: reportsData, isLoading: reportsLoading } = useReports();
+  const { data: eventsData, isLoading: eventsLoading } = useEvents();
 
-  const pendingReports = reports.filter(r => r.status === 'draft').length;
+  const children = childrenData?.data || [];
+  const reports = reportsData?.data || [];
+  const events = eventsData?.data || [];
+
+  const pendingReports = reports.filter(r => r.status === 'draft' || r.status === 'pending_review').length;
   const publishedReports = reports.filter(r => r.status === 'published').length;
   const activeChildren = children.filter(c => c.status === 'active').length;
+
+  const isLoading = childrenLoading || reportsLoading || eventsLoading;
 
   const stats = [
     {
@@ -81,7 +92,11 @@ export default function AdminDashboard() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">{stat.title}</p>
-                  <p className="text-2xl font-bold">{stat.value}</p>
+                  {isLoading ? (
+                    <Skeleton className="h-8 w-16" />
+                  ) : (
+                    <p className="text-2xl font-bold">{stat.value}</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -125,7 +140,11 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {recentReports.length === 0 ? (
+                {reportsLoading ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-16 w-full" />
+                  ))
+                ) : recentReports.length === 0 ? (
                   <p className="text-center text-muted-foreground py-4">
                     No reports yet
                   </p>

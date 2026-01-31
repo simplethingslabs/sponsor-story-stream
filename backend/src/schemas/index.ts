@@ -8,3 +8,4 @@ export * from './event';
 export * from './newsletter';
 export * from './invitation';
 export * from './sponsorship';
+export * from './payment';

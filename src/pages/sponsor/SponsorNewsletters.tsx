@@ -1,11 +1,13 @@
-import { useData } from '@/contexts/DataContext';
+import { useNewsletters } from '@/hooks/useApi';
 import { SponsorLayout } from '@/components/layouts/SponsorLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Download, Calendar, FileText } from 'lucide-react';
 
 export default function SponsorNewsletters() {
-  const { newsletters } = useData();
+  const { data: newslettersData, isLoading } = useNewsletters();
+  const newsletters = newslettersData?.data || [];
 
   return (
     <SponsorLayout>
@@ -17,7 +19,13 @@ export default function SponsorNewsletters() {
           </p>
         </div>
 
-        {newsletters.length === 0 ? (
+        {isLoading ? (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-64 w-full" />
+            ))}
+          </div>
+        ) : newsletters.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <FileText className="h-12 w-12 text-muted-foreground" />

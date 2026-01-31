@@ -12,6 +12,7 @@ import notificationsRoutes from './notifications';
 import auditRoutes from './audit';
 import uploadRoutes from './upload';
 import trashRoutes from './trash';
+import paymentsRoutes from './payments';
 
 const router = Router();
 
@@ -28,6 +29,7 @@ router.use('/notifications', notificationsRoutes);
 router.use('/audit', auditRoutes);
 router.use('/upload', uploadRoutes);
 router.use('/trash', trashRoutes);
+router.use('/payments', paymentsRoutes);
 
 // Health check
 router.get('/health', (req, res) => {
