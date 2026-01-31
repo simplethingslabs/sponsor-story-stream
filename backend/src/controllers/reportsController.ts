@@ -4,6 +4,7 @@ import pool from '../config/database';
 import resend, { emailConfig, verifyResendConfig } from '../config/resend';
 import { CreateReportInput, UpdateReportInput, ReportQueryInput } from '../schemas/report';
 import { formatPaginatedResponse } from '../utils/helpers';
+import { notifyChildSponsors, createNotification } from '../services/notificationService';
 
 // Get all reports with pagination
 export async function getReports(req: Request, res: Response, next: NextFunction) {
@@ -267,13 +268,30 @@ export async function publishReport(req: Request, res: Response, next: NextFunct
     
     const report = result.rows[0];
     
-    // Notify sponsors if requested
+    // Get child details
+    const childResult = await pool.query(
+      `SELECT first_name, last_name FROM children WHERE id = $1`,
+      [report.child_id]
+    );
+    const childName = childResult.rows[0] 
+      ? `${childResult.rows[0].first_name} ${childResult.rows[0].last_name}`
+      : 'your sponsored child';
+    
+    // Create in-app notifications for all sponsors of this child
+    await notifyChildSponsors(
+      report.child_id,
+      'report',
+      'New Progress Report',
+      `${report.quarter} ${report.year} report for ${childName} is now available.`,
+      `/sponsor/children/${report.child_id}/reports/${report.id}`
+    );
+    
+    // Send email notifications if requested and Resend is configured
     if (notify_sponsors && verifyResendConfig()) {
       const sponsors = await pool.query(
-        `SELECT u.email, u.full_name, c.first_name as child_name
+        `SELECT u.email, u.full_name
          FROM sponsorships s
          JOIN users u ON s.sponsor_id = u.id
-         JOIN children c ON s.child_id = c.id
          WHERE s.child_id = $1 AND s.status = 'active' AND s.deleted_at IS NULL`,
         [report.child_id]
       );
@@ -282,22 +300,90 @@ export async function publishReport(req: Request, res: Response, next: NextFunct
         await resend.emails.send({
           from: emailConfig.from,
           to: sponsor.email,
-          subject: `New Progress Report for ${sponsor.child_name}`,
+          subject: `New Progress Report for ${childName}`,
           html: `
             <h2>New Progress Report Available</h2>
             <p>Hi ${sponsor.full_name},</p>
-            <p>A new ${report.quarter} ${report.year} progress report is available for ${sponsor.child_name}.</p>
-            <p><a href="${emailConfig.frontendUrl}/my-children/${report.child_id}/reports/${report.id}">View Report</a></p>
+            <p>A new ${report.quarter} ${report.year} progress report is available for ${childName}.</p>
+            <p><a href="${emailConfig.frontendUrl}/sponsor/children/${report.child_id}/reports/${report.id}">View Report</a></p>
           `,
         });
-        
-        // Create in-app notification
-        await pool.query(
-          `INSERT INTO notifications (id, user_id, type, title, message, link)
-           VALUES ($1, $2, 'report', 'New Progress Report', $3, $4)`,
-          [uuidv4(), sponsor.sponsor_id, `New ${report.quarter} ${report.year} report for ${sponsor.child_name}`, `/my-children/${report.child_id}/reports/${report.id}`]
-        );
       }
+    }
+    
+    res.json(report);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Request revision on a report (notify teacher)
+export async function requestRevision(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params;
+    const { feedback } = req.body;
+    const reviewerId = req.user?.userId;
+    
+    const result = await pool.query(
+      `UPDATE progress_reports 
+       SET status = 'needs_revision', feedback = $1, reviewed_by = $2, reviewed_at = NOW(), updated_at = NOW()
+       WHERE id = $3 AND deleted_at IS NULL
+       RETURNING *`,
+      [feedback, reviewerId, id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Report not found' });
+    }
+    
+    const report = result.rows[0];
+    
+    // Notify the teacher
+    if (report.teacher_id) {
+      await createNotification({
+        userId: report.teacher_id,
+        type: 'system',
+        title: 'Report Needs Revision',
+        message: feedback || 'Your report requires changes before it can be published.',
+        link: `/teacher/reports/${report.id}`,
+      });
+    }
+    
+    res.json(report);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Approve a report (notify teacher)
+export async function approveReport(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params;
+    const reviewerId = req.user?.userId;
+    
+    const result = await pool.query(
+      `UPDATE progress_reports 
+       SET status = 'approved', reviewed_by = $1, reviewed_at = NOW(), updated_at = NOW()
+       WHERE id = $2 AND deleted_at IS NULL
+       RETURNING *`,
+      [reviewerId, id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Report not found' });
+    }
+    
+    const report = result.rows[0];
+    
+    // Notify the teacher
+    if (report.teacher_id) {
+      await createNotification({
+        userId: report.teacher_id,
+        type: 'system',
+        title: 'Report Approved',
+        message: 'Your report has been approved and is ready for publishing.',
+        link: `/teacher/reports/${report.id}`,
+      });
     }
     
     res.json(report);

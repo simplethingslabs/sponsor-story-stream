@@ -16,6 +16,7 @@ import {
   Menu,
   Heart,
   ChevronDown,
+  Settings,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -143,6 +144,13 @@ export function SponsorLayout({ children }: SponsorLayoutProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/settings/notifications" className="flex items-center">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Notification Settings
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
