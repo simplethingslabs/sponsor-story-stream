@@ -126,7 +126,7 @@ export default function ClassroomMoments() {
       url: previewUrl,
       caption: caption.trim(),
       taggedChildren,
-      event: selectedEvent || undefined,
+      event: selectedEvent && selectedEvent !== 'none' ? selectedEvent : undefined,
       uploadedAt: new Date().toISOString(),
       status: 'pending',
     };
@@ -290,7 +290,7 @@ export default function ClassroomMoments() {
                       <SelectValue placeholder="Select an event" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No event</SelectItem>
+                      <SelectItem value="none">No event</SelectItem>
                       {mockEvents.map((event) => (
                         <SelectItem key={event.id} value={event.id}>
                           {event.title} ({format(new Date(event.event_date), 'MMM d, yyyy')})
