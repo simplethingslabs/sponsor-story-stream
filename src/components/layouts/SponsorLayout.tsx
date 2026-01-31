@@ -30,9 +30,12 @@ interface SponsorLayoutProps {
   children: React.ReactNode;
 }
 
+import { IndianRupee } from 'lucide-react';
+
 const navigation = [
   { name: 'Home', href: '/sponsor', icon: Home },
   { name: 'My Sponsored Children', href: '/sponsor/children', icon: Users },
+  { name: 'Payments & Receipts', href: '/sponsor/payments', icon: IndianRupee },
   { name: 'Newsletters', href: '/sponsor/newsletters', icon: Newspaper },
   { name: 'Events & Activities', href: '/sponsor/events', icon: Calendar },
   { name: 'Invite a Friend', href: '/sponsor/invite', icon: Share2 },

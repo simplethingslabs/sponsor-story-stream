@@ -144,6 +144,27 @@ export interface SponsorInvitation {
   accepted_at?: string;
 }
 
+// Payment Types
+export type PaymentStatus = 'pending' | 'paid' | 'overdue' | 'cancelled';
+export type PaymentMethod = 'upi' | 'bank_transfer' | 'cheque' | 'cash';
+
+export interface Payment {
+  id: string;
+  sponsor_id: string;
+  child_id?: string;
+  amount: number;
+  currency: 'INR';
+  status: PaymentStatus;
+  payment_method?: PaymentMethod;
+  payment_date?: string;
+  due_date: string;
+  receipt_number?: string;
+  reference_number?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // Auth Types
 export interface LoginCredentials {
   email: string;

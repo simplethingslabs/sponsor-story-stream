@@ -43,6 +43,11 @@ const navigation = [
   { name: 'Sponsors', href: '/dashboard/sponsors', icon: UserPlus },
 ];
 
+const financialNavigation = [
+  { name: 'Financial Dashboard', href: '/dashboard/financials', icon: LayoutDashboard },
+  { name: 'Payment Management', href: '/dashboard/payments', icon: FileText },
+];
+
 const teacherNavigation = [
   { name: 'Teacher Portal', href: '/teacher', icon: GraduationCap },
 ];
@@ -96,6 +101,37 @@ function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
             );
           })}
         </nav>
+
+        {/* Financials Section - Admin Only */}
+        {(hasRole('super_admin') || hasRole('admin')) && (
+          <>
+            <div className="my-4 border-t border-border" />
+            <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Financials
+            </p>
+            <nav className="space-y-1">
+              {financialNavigation.map((item) => {
+                const isActive = location.pathname === item.href || 
+                  location.pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    onClick={onLinkClick}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    }`}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </nav>
+          </>
+        )}
 
         {/* Teacher Section */}
         <>

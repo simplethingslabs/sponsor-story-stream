@@ -330,7 +330,154 @@ export const mockSponsors: UserWithRoles[] = [
 ];
 
 // Demo Pending Registrations
-import type { PendingRegistration, SponsorInvitation } from '@/types';
+import type { PendingRegistration, SponsorInvitation, Payment } from '@/types';
+
+// Demo Payments for testing payment system
+export const mockPayments: Payment[] = [
+  {
+    id: 'pay-1',
+    sponsor_id: 'sponsor-1',
+    child_id: 'child-1',
+    amount: 2500,
+    currency: 'INR',
+    status: 'paid',
+    payment_method: 'upi',
+    payment_date: '2025-01-15T10:30:00Z',
+    due_date: '2025-01-15',
+    receipt_number: '80G/2025/001',
+    reference_number: 'UPI123456789',
+    notes: 'January sponsorship',
+    created_at: '2025-01-01T00:00:00Z',
+    updated_at: '2025-01-15T10:30:00Z',
+  },
+  {
+    id: 'pay-2',
+    sponsor_id: 'sponsor-1',
+    child_id: 'child-2',
+    amount: 2500,
+    currency: 'INR',
+    status: 'paid',
+    payment_method: 'bank_transfer',
+    payment_date: '2025-01-14T14:00:00Z',
+    due_date: '2025-01-15',
+    receipt_number: '80G/2025/002',
+    reference_number: 'NEFT789012345',
+    created_at: '2025-01-01T00:00:00Z',
+    updated_at: '2025-01-14T14:00:00Z',
+  },
+  {
+    id: 'pay-3',
+    sponsor_id: 'sponsor-1',
+    child_id: 'child-3',
+    amount: 2500,
+    currency: 'INR',
+    status: 'pending',
+    due_date: '2026-02-15',
+    created_at: '2026-01-15T00:00:00Z',
+    updated_at: '2026-01-15T00:00:00Z',
+  },
+  {
+    id: 'pay-4',
+    sponsor_id: 'sponsor-2',
+    child_id: 'child-4',
+    amount: 2500,
+    currency: 'INR',
+    status: 'overdue',
+    due_date: '2026-01-15',
+    created_at: '2025-12-15T00:00:00Z',
+    updated_at: '2026-01-20T00:00:00Z',
+  },
+  {
+    id: 'pay-5',
+    sponsor_id: 'sponsor-3',
+    child_id: 'child-5',
+    amount: 2500,
+    currency: 'INR',
+    status: 'paid',
+    payment_method: 'cheque',
+    payment_date: '2025-12-20T00:00:00Z',
+    due_date: '2025-12-15',
+    receipt_number: '80G/2024/045',
+    reference_number: 'CHQ001234',
+    notes: 'December payment via cheque',
+    created_at: '2025-12-01T00:00:00Z',
+    updated_at: '2025-12-20T00:00:00Z',
+  },
+  {
+    id: 'pay-6',
+    sponsor_id: 'sponsor-1',
+    child_id: 'child-1',
+    amount: 2500,
+    currency: 'INR',
+    status: 'paid',
+    payment_method: 'upi',
+    payment_date: '2024-12-15T10:00:00Z',
+    due_date: '2024-12-15',
+    receipt_number: '80G/2024/038',
+    reference_number: 'UPI987654321',
+    created_at: '2024-12-01T00:00:00Z',
+    updated_at: '2024-12-15T10:00:00Z',
+  },
+  {
+    id: 'pay-7',
+    sponsor_id: 'sponsor-1',
+    child_id: 'child-2',
+    amount: 2500,
+    currency: 'INR',
+    status: 'paid',
+    payment_method: 'bank_transfer',
+    payment_date: '2024-11-15T09:00:00Z',
+    due_date: '2024-11-15',
+    receipt_number: '80G/2024/032',
+    reference_number: 'IMPS456789012',
+    created_at: '2024-11-01T00:00:00Z',
+    updated_at: '2024-11-15T09:00:00Z',
+  },
+];
+
+// Helper to get payments by sponsor
+export function getPaymentsBySponsor(sponsorId: string): Payment[] {
+  return mockPayments.filter(p => p.sponsor_id === sponsorId);
+}
+
+// Helper to get payment stats
+export function getPaymentStats() {
+  const now = new Date();
+  const thisMonth = now.getMonth();
+  const thisYear = now.getFullYear();
+  
+  const totalCollected = mockPayments
+    .filter(p => p.status === 'paid')
+    .reduce((sum, p) => sum + p.amount, 0);
+  
+  const thisMonthCollected = mockPayments
+    .filter(p => {
+      if (p.status !== 'paid' || !p.payment_date) return false;
+      const payDate = new Date(p.payment_date);
+      return payDate.getMonth() === thisMonth && payDate.getFullYear() === thisYear;
+    })
+    .reduce((sum, p) => sum + p.amount, 0);
+  
+  const pendingAmount = mockPayments
+    .filter(p => p.status === 'pending')
+    .reduce((sum, p) => sum + p.amount, 0);
+  
+  const overdueAmount = mockPayments
+    .filter(p => p.status === 'overdue')
+    .reduce((sum, p) => sum + p.amount, 0);
+  
+  const overdueCount = mockPayments.filter(p => p.status === 'overdue').length;
+  const pendingCount = mockPayments.filter(p => p.status === 'pending').length;
+  
+  return {
+    totalCollected,
+    thisMonthCollected,
+    pendingAmount,
+    overdueAmount,
+    overdueCount,
+    pendingCount,
+  };
+}
 
 export const mockPendingRegistrations: PendingRegistration[] = [
   {
