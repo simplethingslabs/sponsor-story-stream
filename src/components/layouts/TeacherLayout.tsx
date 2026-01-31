@@ -10,15 +10,13 @@ import {
   LayoutDashboard,
   Users,
   FileText,
-  Newspaper,
-  Calendar,
-  UserPlus,
+  Camera,
+  ClipboardCheck,
   LogOut,
   Menu,
   GraduationCap,
   ChevronDown,
-  ClipboardList,
-  Trash2,
+  Settings,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -29,33 +27,20 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-interface AdminLayoutProps {
+interface TeacherLayoutProps {
   children: React.ReactNode;
 }
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Children', href: '/dashboard/children', icon: Users },
-  { name: 'Progress Reports', href: '/dashboard/reports', icon: FileText },
-  { name: 'Report Review', href: '/dashboard/reports/review', icon: ClipboardList, adminOnly: true },
-  { name: 'Newsletters', href: '/dashboard/newsletters', icon: Newspaper },
-  { name: 'Events', href: '/dashboard/events', icon: Calendar },
-  { name: 'Sponsors', href: '/dashboard/sponsors', icon: UserPlus },
-];
-
-const teacherNavigation = [
-  { name: 'Teacher Portal', href: '/teacher', icon: GraduationCap },
-];
-
-const systemNavigation = [
-  { name: 'Audit Logs', href: '/dashboard/audit-logs', icon: ClipboardList },
-  { name: 'Trash', href: '/dashboard/trash', icon: Trash2 },
+  { name: 'Dashboard', href: '/teacher', icon: LayoutDashboard },
+  { name: 'My Students', href: '/teacher/students', icon: Users },
+  { name: 'Attendance', href: '/teacher/attendance', icon: ClipboardCheck },
+  { name: 'Classroom Moments', href: '/teacher/moments', icon: Camera },
+  { name: 'Progress Reports', href: '/teacher/reports', icon: FileText },
 ];
 
 function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
   const location = useLocation();
-  const { hasRole } = useAuth();
-  const isSuperAdmin = hasRole('super_admin');
 
   return (
     <div className="flex h-full flex-col">
@@ -64,21 +49,15 @@ function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
           <GraduationCap className="h-5 w-5 text-primary-foreground" />
         </div>
-        <span className="text-lg font-semibold text-foreground">SponsorConnect</span>
+        <span className="text-lg font-semibold text-foreground">Teacher Portal</span>
       </div>
 
       {/* Navigation */}
       <ScrollArea className="flex-1 px-3 py-4">
         <nav className="space-y-1">
           {navigation.map((item) => {
-            // Skip admin-only items for non-admins
-            if (item.adminOnly && !hasRole('super_admin') && !hasRole('admin')) {
-              return null;
-            }
-            
             const isActive = location.pathname === item.href || 
-              (item.href !== '/dashboard' && location.pathname.startsWith(item.href) && 
-               !(item.href === '/dashboard/reports' && location.pathname.includes('/review')));
+              (item.href !== '/teacher' && location.pathname.startsWith(item.href));
             return (
               <Link
                 key={item.name}
@@ -97,70 +76,35 @@ function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
           })}
         </nav>
 
-        {/* Teacher Section */}
-        <>
-          <div className="my-4 border-t border-border" />
-          <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Teacher
-          </p>
-          <nav className="space-y-1">
-            {teacherNavigation.map((item) => {
-              const isActive = location.pathname.startsWith(item.href);
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  onClick={onLinkClick}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  }`}
-                >
-                  <item.icon className="h-5 w-5" />
-                  {item.name}
-                </Link>
-              );
-            })}
-          </nav>
-        </>
-
-        {/* System Section - Super Admin Only */}
-        {isSuperAdmin && (
-          <>
-            <div className="my-4 border-t border-border" />
-            <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              System
-            </p>
-            <nav className="space-y-1">
-              {systemNavigation.map((item) => {
-                const isActive = location.pathname === item.href || 
-                  location.pathname.startsWith(item.href);
-                return (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    onClick={onLinkClick}
-                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                    }`}
-                  >
-                    <item.icon className="h-5 w-5" />
-                    {item.name}
-                  </Link>
-                );
-              })}
-            </nav>
-          </>
-        )}
+        {/* Quick Links */}
+        <div className="my-4 border-t border-border" />
+        <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Quick Actions
+        </p>
+        <nav className="space-y-1">
+          <Link
+            to="/teacher/reports/new"
+            onClick={onLinkClick}
+            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <FileText className="h-5 w-5" />
+            Create Report
+          </Link>
+          <Link
+            to="/teacher/moments/upload"
+            onClick={onLinkClick}
+            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <Camera className="h-5 w-5" />
+            Upload Photos
+          </Link>
+        </nav>
       </ScrollArea>
     </div>
   );
 }
 
-export function AdminLayout({ children }: AdminLayoutProps) {
+export function TeacherLayout({ children }: TeacherLayoutProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -210,7 +154,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={user?.avatar_url} />
                     <AvatarFallback className="bg-primary/10 text-primary">
-                      {user?.full_name?.charAt(0) || 'U'}
+                      {user?.full_name?.charAt(0) || 'T'}
                     </AvatarFallback>
                   </Avatar>
                   <span className="hidden text-sm font-medium md:inline-block">
