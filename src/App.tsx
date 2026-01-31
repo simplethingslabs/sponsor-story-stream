@@ -37,6 +37,8 @@ import InviteSponsor from "./pages/admin/InviteSponsor";
 import AuditLogs from "./pages/admin/AuditLogs";
 import Trash from "./pages/admin/Trash";
 import ReportReview from "./pages/admin/ReportReview";
+import FinancialDashboard from "./pages/admin/FinancialDashboard";
+import PaymentManagement from "./pages/admin/PaymentManagement";
 
 // Sponsor Pages
 import SponsorHome from "./pages/sponsor/SponsorHome";
@@ -46,6 +48,7 @@ import ReportDetail from "./pages/sponsor/ReportDetail";
 import SponsorNewsletters from "./pages/sponsor/SponsorNewsletters";
 import SponsorEvents from "./pages/sponsor/SponsorEvents";
 import InviteFriend from "./pages/sponsor/InviteFriend";
+import SponsorPayments from "./pages/sponsor/Payments";
 
 // Teacher Pages
 import TeacherDashboard from "./pages/teacher/TeacherDashboard";
@@ -97,6 +100,8 @@ const App = () => (
               <Route path="/dashboard/sponsors/:id/manage" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><ManageSponsorships /></ProtectedRoute>} />
               <Route path="/dashboard/audit-logs" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><AuditLogs /></ProtectedRoute>} />
               <Route path="/dashboard/trash" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><Trash /></ProtectedRoute>} />
+              <Route path="/dashboard/financials" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><FinancialDashboard /></ProtectedRoute>} />
+              <Route path="/dashboard/payments" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><PaymentManagement /></ProtectedRoute>} />
 
               {/* Sponsor routes */}
               <Route path="/sponsor" element={<ProtectedRoute allowedRoles={['sponsor']}><SponsorHome /></ProtectedRoute>} />
@@ -106,6 +111,7 @@ const App = () => (
               <Route path="/sponsor/newsletters" element={<ProtectedRoute allowedRoles={['sponsor']}><SponsorNewsletters /></ProtectedRoute>} />
               <Route path="/sponsor/events" element={<ProtectedRoute allowedRoles={['sponsor']}><SponsorEvents /></ProtectedRoute>} />
               <Route path="/sponsor/invite" element={<ProtectedRoute allowedRoles={['sponsor']}><InviteFriend /></ProtectedRoute>} />
+              <Route path="/sponsor/payments" element={<ProtectedRoute allowedRoles={['sponsor']}><SponsorPayments /></ProtectedRoute>} />
 
               {/* Teacher routes */}
               <Route path="/teacher" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><TeacherDashboard /></ProtectedRoute>} />
