@@ -1,214 +1,130 @@
 
-# Phase 5: Minimal Payment System (No Payment Gateway Required)
+
+# Phase 6: Notification System Integration
 
 ## Overview
 
-Since you don't have Razorpay or any payment gateway integration, the **minimal implementation** focuses on:
+The notification infrastructure is **partially built** - backend services and API routes exist, but the frontend uses mock data and doesn't sync with the real database. Phase 6 will complete the integration and add automatic notification triggers throughout the application.
 
-1. **Manual Payment Recording** - Admins log payments received via UPI, bank transfer, or cheque
-2. **Payment Tracking Dashboard** - View collection status and overdue payments
-3. **Sponsor Payment History** - Sponsors can see their payment records and download receipts
-4. **80G Tax Receipt Generation** - PDF receipts for tax deduction purposes
+## Current State Analysis
 
-This approach is common for NGOs in India where sponsors pay via direct bank transfer/UPI and admins manually reconcile.
+| Component | Status | Location |
+|-----------|--------|----------|
+| Database table | Done | `backend/migrations/001_initial_schema.sql` - notifications table exists |
+| Backend API | Done | `backend/src/routes/notifications.ts` - GET, PUT, DELETE endpoints |
+| Backend service | Done | `backend/src/services/notificationService.ts` - helpers for bulk notifications |
+| Frontend context | Partial | Uses hardcoded mock data, not connected to API |
+| React Query hooks | Done | `useNotifications`, `useMarkNotificationRead`, `useMarkAllNotificationsRead` |
+| UI component | Done | `NotificationDropdown.tsx` - fully functional UI |
 
----
+## What Phase 6 Will Implement
 
-## What This Implementation Includes
+### 1. Connect Frontend to Backend API
 
-| Feature | Admin | Sponsor |
-|---------|-------|---------|
-| Record payments manually | Yes | No |
-| View all payment history | Yes | Own only |
-| Financial dashboard with charts | Yes | No |
-| Send payment reminders | Yes | No |
-| View/download 80G receipts | Yes | Yes |
-| Mark payments as received | Yes | No |
-| See overdue payments | Yes | Own only |
+**Update `NotificationContext.tsx`:**
+- Replace mock data with API calls using existing React Query hooks
+- Add polling interval to fetch new notifications (every 30 seconds)
+- Sync mark-as-read and delete actions with backend
 
----
+### 2. Add Backend Notification Triggers
 
-## Implementation Details
+Integrate `notificationService` calls into existing controllers when:
 
-### 1. Types & Mock Data
+| Trigger Event | Recipients | Notification Type |
+|---------------|------------|-------------------|
+| Report published | Child's sponsors | `report_published` |
+| Newsletter created | All sponsors | `newsletter_published` |
+| Event created | All sponsors | `event_created` |
+| Sponsorship assigned | Sponsor | `sponsorship_assigned` |
+| Registration approved | New sponsor | `registration_approved` |
+| Report needs revision | Teacher | `system` |
+| Report approved | Teacher | `system` |
+| Payment reminder (future) | Sponsor | `system` |
 
-**File: `src/types/index.ts`**
+### 3. Add New Notification Types to Schema
 
-Add new payment-related types:
+Update database migration to include new types:
+- `report_needs_revision` - for teachers when admin requests changes
+- `report_approved` - for teachers when admin approves
+- `payment_reminder` - for payment due alerts
+- `classroom_moment` - when teacher uploads photos of sponsored child
+
+### 4. Create Notification Settings Page
+
+New page for users to manage their preferences:
+- Email notification toggles (on/off per category)
+- In-app notification toggles
+- Notification sound preferences
+
+### 5. Admin Notification Management
+
+Admin page to:
+- View all system notifications
+- Send manual announcements to all sponsors
+- Send targeted notifications to specific users
+
+## Implementation Files
+
+| File | Action | Description |
+|------|--------|-------------|
+| `src/contexts/NotificationContext.tsx` | Modify | Connect to API, add polling |
+| `src/components/NotificationDropdown.tsx` | Modify | Use API mutations, add loading states |
+| `src/types/index.ts` | Modify | Add Notification type |
+| `backend/src/controllers/reportsController.ts` | Modify | Add notification triggers for review workflow |
+| `backend/src/controllers/newslettersController.ts` | Modify | Notify all sponsors on publish |
+| `backend/src/controllers/eventsController.ts` | Modify | Notify sponsors on event creation |
+| `backend/src/controllers/sponsorshipsController.ts` | Modify | Notify on sponsorship changes |
+| `backend/migrations/002_notification_types.sql` | Create | Add new notification types |
+| `src/pages/settings/NotificationSettings.tsx` | Create | User preferences page |
+| `src/pages/admin/NotificationCenter.tsx` | Create | Admin broadcast system |
+
+## Technical Details
+
+### Polling Strategy
 
 ```text
-+-------------------------+
-| Payment                 |
-+-------------------------+
-| id: string             |
-| sponsor_id: string     |
-| child_id: string       |
-| amount: number         |
-| currency: 'INR'        |
-| status: PaymentStatus  |
-| payment_method         |
-| payment_date           |
-| due_date              |
-| receipt_number        |
-| notes                 |
-+-------------------------+
+Frontend NotificationContext
+           |
+           v
+    useQuery with refetchInterval: 30000
+           |
+           v
+    GET /api/notifications?unread_only=true
+           |
+           v
+    Update local state & badge count
 ```
 
-Payment statuses: `pending` | `paid` | `overdue` | `cancelled`
+### Notification Flow (Example: Report Published)
 
-**File: `src/data/mockData.ts`**
-
-Add mock payment data for testing with various statuses.
-
----
-
-### 2. Admin Financial Dashboard
-
-**New File: `src/pages/admin/FinancialDashboard.tsx`**
-
-A comprehensive overview page showing:
-
-- **Stats Cards**: Total collected (month/quarter/year), pending amount, overdue count
-- **Collection Trend Chart**: Line chart showing monthly collections (uses Recharts)
-- **Payment Status Breakdown**: Pie chart of paid vs pending vs overdue
-- **Quick Actions**: Links to record payment, view overdue, send reminders
-
----
-
-### 3. Admin Payment Management
-
-**New File: `src/pages/admin/PaymentManagement.tsx`**
-
-Full payment management interface:
-
-- **Payment List**: Filterable table of all payments
-- **Filters**: By status (all/pending/paid/overdue), by sponsor, by date range
-- **Record Payment Dialog**: Form to manually record a new payment
-  - Select sponsor
-  - Select child (if applicable)
-  - Amount (with INR default)
-  - Payment method: UPI / Bank Transfer / Cheque / Cash
-  - Payment date
-  - Reference number (UPI transaction ID, cheque number, etc.)
-  - Notes
-- **Mark as Paid**: Quick action to mark pending payments as received
-- **Send Reminder**: Send email reminder to sponsor for overdue payments
-
----
-
-### 4. Admin 80G Receipt Generator
-
-**Integrated into Payment Management**
-
-- Generate 80G tax receipt for any paid payment
-- PDF format using `react-to-print` (already installed)
-- Includes:
-  - Organization name and 80G registration details
-  - Receipt number (auto-generated)
-  - Sponsor name and address
-  - Donation amount in words and figures
-  - Date of receipt
-  - Purpose (child sponsorship)
-
----
-
-### 5. Sponsor Payment Portal
-
-**New File: `src/pages/sponsor/Payments.tsx`**
-
-Sponsor-facing payment page showing:
-
-- **Next Payment Due**: Highlighted card with due date and amount
-- **Payment History**: List of all past payments with status
-- **Download Receipts**: Link to download 80G receipt for each paid transaction
-- **Payment Instructions**: Static section showing how to pay
-  - Bank account details (configurable)
-  - UPI ID
-  - Cheque instructions
-
----
-
-### 6. Navigation Updates
-
-**Files: `AdminLayout.tsx`, `SponsorLayout.tsx`, `App.tsx`**
-
-- Add "Financials" section in admin navigation with:
-  - Financial Dashboard
-  - Payment Management
-- Add "Payments" link in sponsor navigation
-- Register new routes
-
----
-
-## Files to Create/Modify
-
-| File | Action | Purpose |
-|------|--------|---------|
-| `src/types/index.ts` | Modify | Add Payment types |
-| `src/data/mockData.ts` | Modify | Add mock payment data |
-| `src/pages/admin/FinancialDashboard.tsx` | Create | Admin overview |
-| `src/pages/admin/PaymentManagement.tsx` | Create | Payment CRUD |
-| `src/components/payments/PaymentReceipt.tsx` | Create | 80G receipt template |
-| `src/pages/sponsor/Payments.tsx` | Create | Sponsor payment history |
-| `src/components/layouts/AdminLayout.tsx` | Modify | Add nav links |
-| `src/components/layouts/SponsorLayout.tsx` | Modify | Add nav link |
-| `src/App.tsx` | Modify | Register routes |
-
----
-
-## Technical Notes
-
-### No Backend Changes Initially
-
-Since this is frontend-only with mock data, no backend migration is needed for testing. When ready to connect to the real backend, you would add:
-
-```sql
--- Future backend migration
-CREATE TABLE payments (
-    id UUID PRIMARY KEY,
-    sponsor_id UUID REFERENCES users(id),
-    child_id UUID REFERENCES children(id),
-    amount DECIMAL(10,2) NOT NULL,
-    currency VARCHAR(3) DEFAULT 'INR',
-    status VARCHAR(20) DEFAULT 'pending',
-    payment_method VARCHAR(50),
-    payment_date TIMESTAMP,
-    due_date DATE,
-    receipt_number VARCHAR(50),
-    notes TEXT,
-    created_at TIMESTAMP,
-    updated_at TIMESTAMP
-);
+```text
+Admin clicks "Publish Report"
+         |
+         v
+reportsController.publishReport()
+         |
+         v
+Update report status to 'published'
+         |
+         v
+notifyChildSponsors(childId, 'report_published', title, message, link)
+         |
+         v
+Sponsors receive in-app notification on next poll
+         |
+         v
+(Optional) Send email via Resend if user has email notifications enabled
 ```
 
-### Libraries Used (Already Installed)
+## Dependencies
 
-- **Recharts**: Financial charts (already used in Phase 2)
-- **react-to-print**: 80G receipt PDF generation (already used in Phase 2)
-- **date-fns**: Date formatting (already installed)
+- No new packages required
+- Uses existing: React Query, Resend (already configured)
 
----
+## Future Enhancements (Not in Phase 6)
 
-## Future Enhancements (Not in Minimal)
+- WebSocket/SSE for real-time push notifications
+- Push notifications (Web Push API)
+- SMS notifications via Twilio/MSG91
+- Notification digest emails (daily/weekly summary)
 
-These can be added later when you integrate a payment gateway:
-
-1. **Razorpay/PayU Integration** - Online payment collection
-2. **Auto-recurring Payments** - Scheduled monthly sponsorship payments
-3. **Payment Link Generation** - Send payment links to sponsors
-4. **SMS Reminders** - Requires SMS provider (MSG91, Twilio)
-5. **Automated Receipt Emailing** - Send receipts via Resend
-
----
-
-## Summary
-
-This minimal implementation gives you:
-
-- Complete visibility into payment collections
-- Manual payment tracking (perfect for bank transfer/UPI payments)
-- Legal 80G tax receipts for sponsors
-- Overdue payment alerts and reminders
-- No external payment gateway required
-
-Ready to implement when you approve.
