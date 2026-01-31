@@ -19,6 +19,8 @@ import {
   ChevronDown,
   ClipboardList,
   Trash2,
+  Bell,
+  Settings,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -53,6 +55,7 @@ const teacherNavigation = [
 ];
 
 const systemNavigation = [
+  { name: 'Notification Center', href: '/dashboard/notifications', icon: Bell },
   { name: 'Audit Logs', href: '/dashboard/audit-logs', icon: ClipboardList },
   { name: 'Trash', href: '/dashboard/trash', icon: Trash2 },
 ];
@@ -257,6 +260,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/settings/notifications" className="flex items-center">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Notification Settings
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />

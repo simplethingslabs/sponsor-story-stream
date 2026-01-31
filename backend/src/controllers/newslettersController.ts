@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import pool from '../config/database';
 import { CreateNewsletterInput, UpdateNewsletterInput, NewsletterQueryInput } from '../schemas/newsletter';
 import { formatPaginatedResponse } from '../utils/helpers';
+import { notifyAllSponsors } from '../services/notificationService';
 
 // Get all newsletters
 export async function getNewsletters(req: Request, res: Response, next: NextFunction) {
@@ -92,7 +93,17 @@ export async function createNewsletter(req: Request, res: Response, next: NextFu
       ]
     );
     
-    res.status(201).json(result.rows[0]);
+    const newsletter = result.rows[0];
+    
+    // Notify all sponsors about the new newsletter
+    await notifyAllSponsors(
+      'newsletter',
+      'New Newsletter Published',
+      `${newsletter.title} is now available to read.`,
+      `/sponsor/newsletters/${newsletter.id}`
+    );
+    
+    res.status(201).json(newsletter);
   } catch (error) {
     next(error);
   }

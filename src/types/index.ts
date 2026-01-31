@@ -183,3 +183,17 @@ export interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
 }
+
+// Notification Types
+export type NotificationType = 'report' | 'newsletter' | 'event' | 'sponsorship' | 'system';
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  link?: string;
+  read_at?: string;
+  created_at: string;
+}

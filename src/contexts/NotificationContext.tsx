@@ -1,108 +1,107 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode, useMemo, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { 
+  useNotificationsQuery, 
+  useMarkNotificationRead, 
+  useMarkAllNotificationsRead, 
+  useDeleteNotification,
+  queryKeys 
+} from '@/hooks/useApi';
+import { useAuth } from '@/contexts/AuthContext';
+import type { Notification, NotificationType } from '@/types';
 
-export type NotificationType = 'info' | 'success' | 'warning' | 'error';
-
-export interface Notification {
-  id: string;
-  title: string;
-  message: string;
-  type: NotificationType;
-  read: boolean;
-  createdAt: Date;
-  link?: string;
-}
+// Re-export types for backward compatibility
+export type { Notification, NotificationType };
 
 interface NotificationContextType {
   notifications: Notification[];
   unreadCount: number;
-  addNotification: (notification: Omit<Notification, 'id' | 'read' | 'createdAt'>) => void;
+  isLoading: boolean;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
   removeNotification: (id: string) => void;
   clearAll: () => void;
+  refetch: () => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
-// Initial mock notifications
-const initialNotifications: Notification[] = [
-  {
-    id: '1',
-    title: 'New Progress Report',
-    message: 'A new progress report is available for Maria Santos.',
-    type: 'info',
-    read: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 30), // 30 min ago
-    link: '/sponsor/children',
-  },
-  {
-    id: '2',
-    title: 'Upcoming Event',
-    message: 'Science Fair is happening next week. Don\'t miss it!',
-    type: 'info',
-    read: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-    link: '/sponsor/events',
-  },
-  {
-    id: '3',
-    title: 'New Newsletter',
-    message: 'December 2024 newsletter has been published.',
-    type: 'success',
-    read: true,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-    link: '/sponsor/newsletters',
-  },
-];
+// Polling interval: 30 seconds
+const POLLING_INTERVAL = 30 * 1000;
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
-  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
+  const { isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
-
-  const addNotification = useCallback(
-    (notification: Omit<Notification, 'id' | 'read' | 'createdAt'>) => {
-      const newNotification: Notification = {
-        ...notification,
-        id: crypto.randomUUID(),
-        read: false,
-        createdAt: new Date(),
-      };
-      setNotifications((prev) => [newNotification, ...prev]);
-    },
-    []
+  // Fetch notifications with polling (only when authenticated)
+  const { data, isLoading, refetch } = useNotificationsQuery(
+    { limit: 50 },
+    { refetchInterval: isAuthenticated ? POLLING_INTERVAL : undefined }
   );
 
+  const markReadMutation = useMarkNotificationRead();
+  const markAllReadMutation = useMarkAllNotificationsRead();
+  const deleteMutation = useDeleteNotification();
+
+  // Transform API response to match expected format
+  const notifications = useMemo(() => {
+    if (!data?.data) return [];
+    return data.data.map((n) => ({
+      ...n,
+      // Convert read_at to boolean for backward compatibility in UI
+      read: !!n.read_at,
+      createdAt: new Date(n.created_at),
+    }));
+  }, [data]);
+
+  const unreadCount = data?.unread_count ?? 0;
+
   const markAsRead = useCallback((id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
-  }, []);
+    markReadMutation.mutate(id);
+  }, [markReadMutation]);
 
   const markAllAsRead = useCallback(() => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  }, []);
+    markAllReadMutation.mutate();
+  }, [markAllReadMutation]);
 
   const removeNotification = useCallback((id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
-  }, []);
+    deleteMutation.mutate(id);
+  }, [deleteMutation]);
 
   const clearAll = useCallback(() => {
-    setNotifications([]);
-  }, []);
+    // Delete all notifications one by one (or could implement batch delete on backend)
+    notifications.forEach((n) => {
+      deleteMutation.mutate(n.id);
+    });
+  }, [notifications, deleteMutation]);
+
+  const handleRefetch = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.notifications });
+  }, [queryClient]);
+
+  const value = useMemo(() => ({
+    notifications,
+    unreadCount,
+    isLoading: isLoading && isAuthenticated,
+    markAsRead,
+    markAllAsRead,
+    removeNotification,
+    clearAll,
+    refetch: handleRefetch,
+  }), [
+    notifications, 
+    unreadCount, 
+    isLoading, 
+    isAuthenticated,
+    markAsRead, 
+    markAllAsRead, 
+    removeNotification, 
+    clearAll,
+    handleRefetch,
+  ]);
 
   return (
-    <NotificationContext.Provider
-      value={{
-        notifications,
-        unreadCount,
-        addNotification,
-        markAsRead,
-        markAllAsRead,
-        removeNotification,
-        clearAll,
-      }}
-    >
+    <NotificationContext.Provider value={value}>
       {children}
     </NotificationContext.Provider>
   );

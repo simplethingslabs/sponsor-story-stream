@@ -542,15 +542,18 @@ export function useRejectRegistration() {
 }
 
 // ============ Notifications Hooks ============
-export function useNotifications(params?: Record<string, any>) {
+import type { Notification } from '@/types';
+
+export function useNotificationsQuery(params?: Record<string, any>, options?: { refetchInterval?: number }) {
   return useQuery({
     queryKey: [...queryKeys.notifications, params],
     queryFn: async () => {
       const queryString = params ? `?${new URLSearchParams(params).toString()}` : '';
-      const response = await api.get<PaginatedResponse<any> & { unread_count: number }>(`/notifications${queryString}`);
+      const response = await api.get<PaginatedResponse<Notification> & { unread_count: number }>(`/notifications${queryString}`);
       if (response.error) throw new Error(response.error);
       return response.data!;
     },
+    refetchInterval: options?.refetchInterval,
   });
 }
 
@@ -573,6 +576,20 @@ export function useMarkAllNotificationsRead() {
   return useMutation({
     mutationFn: async () => {
       const response = await api.put('/notifications/mark-all-read');
+      if (response.error) throw new Error(response.error);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications });
+    },
+  });
+}
+
+export function useDeleteNotification() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.delete(`/notifications/${id}`);
       if (response.error) throw new Error(response.error);
       return response.data;
     },

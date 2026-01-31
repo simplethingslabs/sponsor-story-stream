@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import pool from '../config/database';
 import { CreateEventInput, UpdateEventInput, EventQueryInput } from '../schemas/event';
 import { formatPaginatedResponse } from '../utils/helpers';
+import { notifyAllSponsors } from '../services/notificationService';
 
 // Get all events
 export async function getEvents(req: Request, res: Response, next: NextFunction) {
@@ -120,7 +121,22 @@ export async function createEvent(req: Request, res: Response, next: NextFunctio
         [id]
       );
       
-      res.status(201).json(fullResult.rows[0]);
+      const event = fullResult.rows[0];
+      
+      // Notify all sponsors about the new event
+      const eventDate = new Date(event.event_date).toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      });
+      await notifyAllSponsors(
+        'event',
+        'New School Event',
+        `${event.title} is scheduled for ${eventDate}.`,
+        `/sponsor/events`
+      );
+      
+      res.status(201).json(event);
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;

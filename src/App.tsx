@@ -39,6 +39,10 @@ import Trash from "./pages/admin/Trash";
 import ReportReview from "./pages/admin/ReportReview";
 import FinancialDashboard from "./pages/admin/FinancialDashboard";
 import PaymentManagement from "./pages/admin/PaymentManagement";
+import NotificationCenter from "./pages/admin/NotificationCenter";
+
+// Settings Pages
+import NotificationSettings from "./pages/settings/NotificationSettings";
 
 // Sponsor Pages
 import SponsorHome from "./pages/sponsor/SponsorHome";
@@ -102,6 +106,10 @@ const App = () => (
               <Route path="/dashboard/trash" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><Trash /></ProtectedRoute>} />
               <Route path="/dashboard/financials" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><FinancialDashboard /></ProtectedRoute>} />
               <Route path="/dashboard/payments" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><PaymentManagement /></ProtectedRoute>} />
+              <Route path="/dashboard/notifications" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><NotificationCenter /></ProtectedRoute>} />
+
+              {/* Settings routes (all authenticated users) */}
+              <Route path="/settings/notifications" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher', 'sponsor']}><NotificationSettings /></ProtectedRoute>} />
 
               {/* Sponsor routes */}
               <Route path="/sponsor" element={<ProtectedRoute allowedRoles={['sponsor']}><SponsorHome /></ProtectedRoute>} />
