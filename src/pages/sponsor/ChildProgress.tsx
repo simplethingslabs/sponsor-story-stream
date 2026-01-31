@@ -1,12 +1,12 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useData } from '@/contexts/DataContext';
+import { useChild, useReports } from '@/hooks/useApi';
 import { SponsorLayout } from '@/components/layouts/SponsorLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Calendar, GraduationCap, FileText, ChevronRight, Sparkles, Target, TrendingUp } from 'lucide-react';
-import { calculateAge } from '@/data/mockData';
 import {
   LineChart,
   Line,
@@ -22,10 +22,20 @@ import {
   Radar,
 } from 'recharts';
 
-// Mock progress data for charts (will be replaced with real data in Phase 4)
+function calculateAge(dateOfBirth: string): number {
+  const today = new Date();
+  const birthDate = new Date(dateOfBirth);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+}
+
+// Mock progress data for charts
 const generateProgressData = (reports: any[]) => {
-  const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
-  return reports.slice(0, 4).reverse().map((report, index) => ({
+  return reports.slice(0, 4).reverse().map((report) => ({
     quarter: `${report.quarter} ${report.year}`,
     attendance: 85 + Math.floor(Math.random() * 15),
     participation: 70 + Math.floor(Math.random() * 25),
@@ -45,11 +55,32 @@ const skillsData = [
 export default function ChildProgress() {
   const { childId } = useParams();
   const navigate = useNavigate();
-  const { getChildById, getReportsForChild } = useData();
+  
+  // Use real API hooks
+  const { data: child, isLoading: childLoading } = useChild(childId || '');
+  const { data: reportsData, isLoading: reportsLoading } = useReports({ 
+    child_id: childId,
+    status: 'published',
+  });
 
-  const child = getChildById(childId || '');
-  const reports = getReportsForChild(childId || '');
+  const reports = reportsData?.data || [];
   const progressData = reports.length > 0 ? generateProgressData(reports) : [];
+  const isLoading = childLoading || reportsLoading;
+
+  if (isLoading) {
+    return (
+      <SponsorLayout>
+        <div className="space-y-6">
+          <Skeleton className="h-10 w-48" />
+          <Skeleton className="h-64 w-full" />
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Skeleton className="h-80" />
+            <Skeleton className="h-80" />
+          </div>
+        </div>
+      </SponsorLayout>
+    );
+  }
 
   if (!child) {
     return (
@@ -80,7 +111,6 @@ export default function ChildProgress() {
   return (
     <SponsorLayout>
       <div className="space-y-6">
-        {/* Back Button */}
         <Button
           variant="ghost"
           className="gap-2"
@@ -156,7 +186,6 @@ export default function ChildProgress() {
         {/* Progress Charts */}
         {progressData.length > 0 && (
           <div className="grid gap-6 lg:grid-cols-2">
-            {/* Attendance & Progress Line Chart */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -230,7 +259,6 @@ export default function ChildProgress() {
               </CardContent>
             </Card>
 
-            {/* Skills Radar Chart */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">

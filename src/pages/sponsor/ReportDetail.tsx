@@ -1,22 +1,24 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
-import { useData } from '@/contexts/DataContext';
+import { useReport, useChild } from '@/hooks/useApi';
 import { SponsorLayout } from '@/components/layouts/SponsorLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Calendar, TrendingUp, Activity, Eye, Image, Download, Printer } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ArrowLeft, Calendar, TrendingUp, Activity, Eye, Image, Download } from 'lucide-react';
 
 export default function ReportDetail() {
   const { reportId } = useParams();
   const navigate = useNavigate();
-  const { reports, getChildById, getReportMedia } = useData();
   const printRef = useRef<HTMLDivElement>(null);
 
-  const report = reports.find((r) => r.id === reportId);
-  const child = report ? getChildById(report.child_id) : null;
-  const media = report ? getReportMedia(report.id) : [];
+  // Use real API hooks
+  const { data: report, isLoading: reportLoading } = useReport(reportId || '');
+  const { data: child, isLoading: childLoading } = useChild(report?.child_id || '');
+
+  const isLoading = reportLoading || (report && childLoading);
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
@@ -24,6 +26,19 @@ export default function ReportDetail() {
       ? `${child.first_name}_${child.last_name}_${report.quarter}_${report.year}_Report`
       : 'Progress_Report',
   });
+
+  if (isLoading) {
+    return (
+      <SponsorLayout>
+        <div className="mx-auto max-w-3xl space-y-6">
+          <Skeleton className="h-10 w-48" />
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-48 w-full" />
+        </div>
+      </SponsorLayout>
+    );
+  }
 
   if (!report || !child) {
     return (
@@ -150,36 +165,6 @@ export default function ReportDetail() {
               </p>
             </CardContent>
           </Card>
-
-          {/* Media Gallery */}
-          {media.length > 0 && (
-            <Card className="print:shadow-none print:border print:break-inside-avoid">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Image className="h-5 w-5 text-primary" />
-                  Photos & Media
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 sm:grid-cols-2 print:grid-cols-2">
-                  {media.map((item) => (
-                    <div key={item.id} className="overflow-hidden rounded-lg print:break-inside-avoid">
-                      <img
-                        src={item.url}
-                        alt={item.caption || 'Report media'}
-                        className="aspect-[4/3] w-full object-cover transition-transform hover:scale-105 print:hover:scale-100"
-                      />
-                      {item.caption && (
-                        <p className="mt-2 text-sm text-muted-foreground">
-                          {item.caption}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Print Footer - only shows in print */}
           <div className="hidden print:block print:mt-12 print:pt-4 print:border-t print:text-center print:text-sm print:text-muted-foreground">

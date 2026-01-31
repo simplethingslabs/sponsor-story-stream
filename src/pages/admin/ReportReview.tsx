@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
   DialogContent,
@@ -30,7 +31,7 @@ import {
   RotateCcw,
   Users,
 } from 'lucide-react';
-import { useData } from '@/contexts/DataContext';
+import { useReports, useChildren, useUpdateReport, usePublishReport } from '@/hooks/useApi';
 import { useToast } from '@/hooks/use-toast';
 import type { ProgressReport, ReportStatus } from '@/types';
 
@@ -41,19 +42,16 @@ const getQualityScore = (report: ProgressReport) => {
     (report.activities?.split(/\s+/).length || 0) +
     (report.teacher_observations?.split(/\s+/).length || 0);
   
-  // Word count scoring (max 40 points)
   if (wordCount >= 200) score += 40;
   else if (wordCount >= 100) score += 30;
   else if (wordCount >= 50) score += 20;
   else score += 10;
   
-  // Media attached (max 30 points)
   const mediaCount = report.media_count || 0;
   if (mediaCount >= 3) score += 30;
   else if (mediaCount >= 2) score += 20;
   else if (mediaCount >= 1) score += 15;
   
-  // All sections filled (max 30 points)
   if (report.growth_narrative && report.growth_narrative.length > 20) score += 10;
   if (report.activities && report.activities.length > 20) score += 10;
   if (report.teacher_observations && report.teacher_observations.length > 20) score += 10;
@@ -79,7 +77,15 @@ const statusConfig: Record<ReportStatus, { label: string; variant: 'default' | '
 export default function ReportReview() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { reports, children, updateReport, getChildById, getReportMedia } = useData();
+  
+  // Use real API hooks
+  const { data: reportsData, isLoading: reportsLoading } = useReports();
+  const { data: childrenData, isLoading: childrenLoading } = useChildren();
+  const updateReport = useUpdateReport();
+  const publishReport = usePublishReport();
+  
+  const reports = reportsData?.data || [];
+  const children = childrenData?.data || [];
   
   const [selectedReports, setSelectedReports] = useState<string[]>([]);
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
@@ -89,7 +95,9 @@ export default function ReportReview() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('pending');
 
-  // Filter reports by status for tabs
+  const getChildById = (childId: string) => children.find(c => c.id === childId);
+
+  // Filter reports by status
   const pendingReports = useMemo(() => 
     reports.filter(r => r.status === 'pending_review' || r.status === 'draft'),
     [reports]
@@ -105,7 +113,6 @@ export default function ReportReview() {
     [reports]
   );
 
-  // Get current quarter for submission tracking
   const currentQuarter = useMemo(() => {
     const month = new Date().getMonth();
     if (month < 3) return 'Q1';
@@ -116,7 +123,6 @@ export default function ReportReview() {
   
   const currentYear = new Date().getFullYear();
 
-  // Submission stats
   const submissionStats = useMemo(() => {
     const totalChildren = children.filter(c => c.status === 'active').length;
     const submittedThisQuarter = reports.filter(
@@ -148,7 +154,10 @@ export default function ReportReview() {
   const handleApprove = async (reportId: string) => {
     setIsSubmitting(true);
     try {
-      updateReport(reportId, { status: 'approved', reviewed_at: new Date().toISOString() });
+      await updateReport.mutateAsync({
+        id: reportId,
+        data: { status: 'approved' },
+      });
       toast({ title: 'Report approved', description: 'The report is ready for publishing.' });
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to approve report', variant: 'destructive' });
@@ -159,9 +168,11 @@ export default function ReportReview() {
   const handleBulkApprove = async () => {
     setIsSubmitting(true);
     try {
-      selectedReports.forEach(reportId => {
-        updateReport(reportId, { status: 'approved', reviewed_at: new Date().toISOString() });
-      });
+      await Promise.all(
+        selectedReports.map(reportId =>
+          updateReport.mutateAsync({ id: reportId, data: { status: 'approved' } })
+        )
+      );
       toast({ 
         title: 'Reports approved', 
         description: `${selectedReports.length} reports have been approved.` 
@@ -176,15 +187,14 @@ export default function ReportReview() {
   const handleBulkPublish = async () => {
     setIsSubmitting(true);
     try {
-      selectedReports.forEach(reportId => {
-        updateReport(reportId, { 
-          status: 'published', 
-          published_at: new Date().toISOString() 
-        });
-      });
+      await Promise.all(
+        selectedReports.map(reportId =>
+          publishReport.mutateAsync({ id: reportId })
+        )
+      );
       toast({ 
         title: 'Reports published', 
-        description: `${selectedReports.length} reports have been published and sponsors notified.` 
+        description: `${selectedReports.length} reports have been published.` 
       });
       setSelectedReports([]);
     } catch (error) {
@@ -198,10 +208,9 @@ export default function ReportReview() {
     
     setIsSubmitting(true);
     try {
-      updateReport(currentReport.id, { 
-        status: 'needs_revision', 
-        feedback,
-        reviewed_at: new Date().toISOString(),
+      await updateReport.mutateAsync({
+        id: currentReport.id,
+        data: { status: 'needs_revision', feedback },
       });
       toast({ 
         title: 'Revision requested', 
@@ -227,6 +236,8 @@ export default function ReportReview() {
     setPreviewDialogOpen(true);
   };
 
+  const isLoading = reportsLoading || childrenLoading;
+
   const renderReportCard = (report: ProgressReport) => {
     const child = getChildById(report.child_id);
     const qualityScore = getQualityScore(report);
@@ -234,14 +245,12 @@ export default function ReportReview() {
     const wordCount = (report.growth_narrative?.split(/\s+/).length || 0) +
       (report.activities?.split(/\s+/).length || 0) +
       (report.teacher_observations?.split(/\s+/).length || 0);
-    const media = getReportMedia(report.id);
     const status = statusConfig[report.status] || statusConfig.draft;
 
     return (
       <Card key={report.id} className="hover:shadow-md transition-shadow">
         <CardContent className="p-4">
           <div className="flex items-start gap-4">
-            {/* Checkbox for bulk actions */}
             {(report.status === 'pending_review' || report.status === 'draft') && (
               <Checkbox
                 checked={selectedReports.includes(report.id)}
@@ -250,7 +259,6 @@ export default function ReportReview() {
               />
             )}
             
-            {/* Child Avatar */}
             <Avatar className="h-12 w-12 flex-shrink-0">
               <AvatarImage src={child?.photo_url} />
               <AvatarFallback className="bg-primary/10 text-primary">
@@ -258,7 +266,6 @@ export default function ReportReview() {
               </AvatarFallback>
             </Avatar>
             
-            {/* Report Info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-medium">
@@ -275,7 +282,7 @@ export default function ReportReview() {
                 </span>
                 <span className="flex items-center gap-1">
                   <Image className="h-3.5 w-3.5" />
-                  {media.length} media
+                  {report.media_count || 0} media
                 </span>
                 <span className={`flex items-center gap-1 ${quality.color}`}>
                   {qualityScore >= 60 ? (
@@ -287,12 +294,10 @@ export default function ReportReview() {
                 </span>
               </div>
 
-              {/* Quality Progress */}
               <div className="mt-2">
                 <Progress value={qualityScore} className="h-1.5" />
               </div>
 
-              {/* Feedback if exists */}
               {report.feedback && (
                 <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded text-sm">
                   <span className="font-medium text-yellow-700 dark:text-yellow-400">Feedback: </span>
@@ -301,7 +306,6 @@ export default function ReportReview() {
               )}
             </div>
             
-            {/* Actions */}
             <div className="flex items-center gap-2 flex-shrink-0">
               <Button
                 variant="ghost"
@@ -335,13 +339,7 @@ export default function ReportReview() {
                   {report.status === 'approved' && (
                     <Button
                       size="sm"
-                      onClick={() => {
-                        updateReport(report.id, { 
-                          status: 'published', 
-                          published_at: new Date().toISOString() 
-                        });
-                        toast({ title: 'Report published!' });
-                      }}
+                      onClick={() => publishReport.mutateAsync({ id: report.id })}
                     >
                       <Send className="h-4 w-4 mr-1" />
                       Publish
@@ -359,7 +357,6 @@ export default function ReportReview() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div>
           <h1 className="text-2xl font-bold">Report Review</h1>
           <p className="text-muted-foreground">
@@ -376,9 +373,13 @@ export default function ReportReview() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">{currentQuarter} {currentYear} Progress</p>
-                <p className="text-2xl font-bold">
-                  {submissionStats.submitted}/{submissionStats.total}
-                </p>
+                {isLoading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <p className="text-2xl font-bold">
+                    {submissionStats.submitted}/{submissionStats.total}
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -390,7 +391,11 @@ export default function ReportReview() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Pending Review</p>
-                <p className="text-2xl font-bold">{pendingReports.length}</p>
+                {isLoading ? (
+                  <Skeleton className="h-8 w-12" />
+                ) : (
+                  <p className="text-2xl font-bold">{pendingReports.length}</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -402,7 +407,11 @@ export default function ReportReview() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Needs Revision</p>
-                <p className="text-2xl font-bold">{revisionReports.length}</p>
+                {isLoading ? (
+                  <Skeleton className="h-8 w-12" />
+                ) : (
+                  <p className="text-2xl font-bold">{revisionReports.length}</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -458,16 +467,24 @@ export default function ReportReview() {
           </TabsList>
 
           <TabsContent value="pending" className="space-y-3 mt-4">
-            {pendingReports.length > 0 && (
-              <div className="flex items-center gap-2 pb-2">
-                <Checkbox
-                  checked={selectedReports.length === pendingReports.length && pendingReports.length > 0}
-                  onCheckedChange={handleSelectAll}
-                />
-                <span className="text-sm text-muted-foreground">Select all</span>
+            {isLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-32 w-full" />
+                ))}
               </div>
-            )}
-            {pendingReports.length === 0 ? (
+            ) : pendingReports.length > 0 ? (
+              <>
+                <div className="flex items-center gap-2 pb-2">
+                  <Checkbox
+                    checked={selectedReports.length === pendingReports.length && pendingReports.length > 0}
+                    onCheckedChange={handleSelectAll}
+                  />
+                  <span className="text-sm text-muted-foreground">Select all</span>
+                </div>
+                {pendingReports.map(renderReportCard)}
+              </>
+            ) : (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <CheckCircle2 className="h-12 w-12 text-green-500" />
@@ -475,13 +492,17 @@ export default function ReportReview() {
                   <p className="text-muted-foreground">No reports pending review</p>
                 </CardContent>
               </Card>
-            ) : (
-              pendingReports.map(renderReportCard)
             )}
           </TabsContent>
 
           <TabsContent value="revision" className="space-y-3 mt-4">
-            {revisionReports.length === 0 ? (
+            {isLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <Skeleton key={i} className="h-32 w-full" />
+                ))}
+              </div>
+            ) : revisionReports.length === 0 ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <CheckCircle2 className="h-12 w-12 text-muted-foreground" />
@@ -494,36 +515,46 @@ export default function ReportReview() {
           </TabsContent>
 
           <TabsContent value="approved" className="space-y-3 mt-4">
-            {approvedReports.length > 0 && (
-              <Card className="border-green-200 bg-green-50 dark:bg-green-900/20">
-                <CardContent className="flex items-center justify-between p-4">
-                  <span className="text-sm font-medium text-green-700 dark:text-green-400">
-                    {approvedReports.length} report(s) ready to publish
-                  </span>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setSelectedReports(approvedReports.map(r => r.id));
-                      handleBulkPublish();
-                    }}
-                    disabled={isSubmitting}
-                  >
-                    <Send className="h-4 w-4 mr-1" />
-                    Publish All
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-            {approvedReports.length === 0 ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <FileText className="h-12 w-12 text-muted-foreground" />
-                  <p className="mt-4 text-lg font-medium">No approved reports</p>
-                  <p className="text-muted-foreground">Approve reports from the Pending tab</p>
-                </CardContent>
-              </Card>
+            {isLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <Skeleton key={i} className="h-32 w-full" />
+                ))}
+              </div>
             ) : (
-              approvedReports.map(renderReportCard)
+              <>
+                {approvedReports.length > 0 && (
+                  <Card className="border-green-200 bg-green-50 dark:bg-green-900/20">
+                    <CardContent className="flex items-center justify-between p-4">
+                      <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                        {approvedReports.length} report(s) ready to publish
+                      </span>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setSelectedReports(approvedReports.map(r => r.id));
+                          handleBulkPublish();
+                        }}
+                        disabled={isSubmitting}
+                      >
+                        <Send className="h-4 w-4 mr-1" />
+                        Publish All
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+                {approvedReports.length === 0 ? (
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-12">
+                      <FileText className="h-12 w-12 text-muted-foreground" />
+                      <p className="mt-4 text-lg font-medium">No approved reports</p>
+                      <p className="text-muted-foreground">Approve reports from the Pending tab</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  approvedReports.map(renderReportCard)
+                )}
+              </>
             )}
           </TabsContent>
         </Tabs>
@@ -578,7 +609,6 @@ export default function ReportReview() {
           
           {currentReport && (
             <div className="space-y-4">
-              {/* Report Header */}
               <div className="bg-gradient-to-r from-primary/20 via-primary/10 to-secondary/20 p-4 rounded-lg">
                 <div className="flex items-center gap-4">
                   <Avatar className="h-16 w-16">
@@ -600,7 +630,6 @@ export default function ReportReview() {
                 </div>
               </div>
 
-              {/* Growth Narrative */}
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">Growth & Development</CardTitle>
@@ -610,7 +639,6 @@ export default function ReportReview() {
                 </CardContent>
               </Card>
 
-              {/* Activities */}
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">Activities & Participation</CardTitle>
@@ -620,7 +648,6 @@ export default function ReportReview() {
                 </CardContent>
               </Card>
 
-              {/* Teacher Observations */}
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">Teacher Observations</CardTitle>
@@ -629,27 +656,6 @@ export default function ReportReview() {
                   <p className="text-foreground/90">{currentReport.teacher_observations}</p>
                 </CardContent>
               </Card>
-
-              {/* Media */}
-              {getReportMedia(currentReport.id).length > 0 && (
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base">Photos & Media</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 gap-2">
-                      {getReportMedia(currentReport.id).map((media) => (
-                        <img
-                          key={media.id}
-                          src={media.url}
-                          alt={media.caption || 'Report media'}
-                          className="rounded-lg object-cover aspect-[4/3] w-full"
-                        />
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
             </div>
           )}
           
