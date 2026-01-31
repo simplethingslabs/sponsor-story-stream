@@ -47,6 +47,13 @@ import SponsorNewsletters from "./pages/sponsor/SponsorNewsletters";
 import SponsorEvents from "./pages/sponsor/SponsorEvents";
 import InviteFriend from "./pages/sponsor/InviteFriend";
 
+// Teacher Pages
+import TeacherDashboard from "./pages/teacher/TeacherDashboard";
+import TeacherStudents from "./pages/teacher/TeacherStudents";
+import AttendanceMarking from "./pages/teacher/AttendanceMarking";
+import ClassroomMoments from "./pages/teacher/ClassroomMoments";
+import TeacherReports from "./pages/teacher/TeacherReports";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -99,6 +106,14 @@ const App = () => (
               <Route path="/sponsor/newsletters" element={<ProtectedRoute allowedRoles={['sponsor']}><SponsorNewsletters /></ProtectedRoute>} />
               <Route path="/sponsor/events" element={<ProtectedRoute allowedRoles={['sponsor']}><SponsorEvents /></ProtectedRoute>} />
               <Route path="/sponsor/invite" element={<ProtectedRoute allowedRoles={['sponsor']}><InviteFriend /></ProtectedRoute>} />
+
+              {/* Teacher routes */}
+              <Route path="/teacher" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><TeacherDashboard /></ProtectedRoute>} />
+              <Route path="/teacher/students" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><TeacherStudents /></ProtectedRoute>} />
+              <Route path="/teacher/attendance" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><AttendanceMarking /></ProtectedRoute>} />
+              <Route path="/teacher/moments" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><ClassroomMoments /></ProtectedRoute>} />
+              <Route path="/teacher/reports" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><TeacherReports /></ProtectedRoute>} />
+              <Route path="/teacher/reports/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><CreateReport /></ProtectedRoute>} />
 
               {/* Catch-all */}
               <Route path="*" element={<NotFound />} />
