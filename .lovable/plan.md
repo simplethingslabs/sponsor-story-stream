@@ -1,300 +1,292 @@
 
-# Phase 7: Deployment Preparation - Schema Fixes & API Completion
+
+# Deployment Guide: Backend to Render + Database Setup
 
 ## Overview
 
-This plan addresses the critical discrepancies between the backend code and database schema, adds missing payment APIs, migrates frontend pages from mock data to real API hooks, and prepares everything for deployment to Render.
+This guide walks you through deploying your Express.js backend to Render with a PostgreSQL database, then connecting your Lovable frontend to the live API.
 
 ---
 
-## Part 1: Database Schema Fixes
+## Part 1: Export Backend Code to GitHub
 
-### Issue 1: Missing `user_roles` Table
+### Step 1.1: Connect Lovable to GitHub (if not already)
 
-**Problem**: All backend controllers expect a separate `user_roles` table with JOIN queries, but the migration uses a `roles TEXT[]` column on the `users` table.
+1. Click the **project name** in the top-left corner of Lovable
+2. Click **Settings**
+3. Go to the **GitHub** tab under "Connectors"
+4. Click **Connect to GitHub**
+5. Authorize Lovable to access your GitHub account
+6. Click **Create Repository** - this creates a new repo with all your code including the `backend/` folder
 
-**Solution**: Create a proper `user_roles` table following security best practices.
+### Step 1.2: Verify Backend Code is in GitHub
 
-**New Migration File**: `backend/migrations/002_user_roles_table.sql`
+1. Go to your GitHub repository (link shown after connecting)
+2. Navigate to the `backend/` folder
+3. Confirm you see these files:
+   - `backend/src/` (all controllers, routes, etc.)
+   - `backend/migrations/` (001-004 SQL files)
+   - `backend/package.json`
+   - `backend/tsconfig.json`
+
+---
+
+## Part 2: Create PostgreSQL Database on Render
+
+### Step 2.1: Create Render Account
+
+1. Go to **https://render.com**
+2. Click **Get Started for Free**
+3. Sign up with GitHub (recommended for easy deployment)
+
+### Step 2.2: Create PostgreSQL Database
+
+1. From Render Dashboard, click **New +** button (top right)
+2. Select **PostgreSQL**
+3. Fill in the form:
+   - **Name**: `sponsor-portal-db`
+   - **Database**: `sponsor_portal`
+   - **User**: `sponsor_admin` (or leave default)
+   - **Region**: Choose closest to your users
+   - **PostgreSQL Version**: `15` or latest
+   - **Instance Type**: Select **Free** (for testing) or **Starter** ($7/month for production)
+4. Click **Create Database**
+5. Wait 1-2 minutes for provisioning
+
+### Step 2.3: Copy Database Connection String
+
+1. Once database is ready, click on it to open details
+2. Scroll to **Connections** section
+3. Copy the **External Database URL** - it looks like:
+   ```
+   postgresql://sponsor_admin:xxxxxxxx@dpg-xxxxx.oregon-postgres.render.com/sponsor_portal
+   ```
+4. **Save this URL** - you'll need it for migrations and backend deployment
+
+---
+
+## Part 3: Run Database Migrations
+
+### Step 3.1: Install PostgreSQL Client (if needed)
+
+**On Mac:**
+```bash
+brew install postgresql
+```
+
+**On Windows:**
+Download from https://www.postgresql.org/download/windows/
+
+**On Linux:**
+```bash
+sudo apt-get install postgresql-client
+```
+
+### Step 3.2: Run Migrations in Order
+
+Open your terminal and run each migration:
+
+```bash
+# Replace YOUR_DATABASE_URL with the External Database URL from Render
+
+# Migration 1: Initial schema (creates all tables)
+psql "YOUR_DATABASE_URL" -f backend/migrations/001_initial_schema.sql
+
+# Migration 2: User roles table
+psql "YOUR_DATABASE_URL" -f backend/migrations/002_user_roles_table.sql
+
+# Migration 3: Add missing columns
+psql "YOUR_DATABASE_URL" -f backend/migrations/003_add_missing_columns.sql
+
+# Migration 4: Payments table
+psql "YOUR_DATABASE_URL" -f backend/migrations/004_payments_table.sql
+```
+
+### Step 3.3: Verify Migrations Succeeded
+
+```bash
+# Connect to database
+psql "YOUR_DATABASE_URL"
+
+# List all tables (should see users, children, payments, etc.)
+\dt
+
+# Check for admin user
+SELECT id, email, full_name FROM users LIMIT 5;
+
+# Exit
+\q
+```
+
+---
+
+## Part 4: Deploy Backend to Render
+
+### Step 4.1: Create Web Service
+
+1. From Render Dashboard, click **New +**
+2. Select **Web Service**
+3. Click **Connect a repository**
+4. Select your GitHub repository
+5. Click **Connect**
+
+### Step 4.2: Configure Build Settings
+
+Fill in the form:
+
+| Setting | Value |
+|---------|-------|
+| **Name** | `sponsor-portal-api` |
+| **Region** | Same as your database |
+| **Branch** | `main` |
+| **Root Directory** | `backend` |
+| **Runtime** | `Node` |
+| **Build Command** | `npm install && npm run build` |
+| **Start Command** | `npm start` |
+| **Instance Type** | Free (or Starter for production) |
+
+### Step 4.3: Add Environment Variables
+
+Scroll to **Environment Variables** section and add:
+
+| Key | Value |
+|-----|-------|
+| `DATABASE_URL` | Your External Database URL from Part 2 |
+| `JWT_SECRET` | Generate a secure random string (32+ characters) |
+| `JWT_EXPIRES_IN` | `1h` |
+| `JWT_REFRESH_EXPIRES_IN` | `7d` |
+| `NODE_ENV` | `production` |
+| `FRONTEND_URL` | `https://sponsor-story-stream.lovable.app` |
+| `PORT` | `3001` |
+
+**Optional (for full functionality):**
+
+| Key | Value |
+|-----|-------|
+| `CLOUDINARY_CLOUD_NAME` | Your Cloudinary cloud name |
+| `CLOUDINARY_API_KEY` | Your Cloudinary API key |
+| `CLOUDINARY_API_SECRET` | Your Cloudinary API secret |
+| `RESEND_API_KEY` | Your Resend API key |
+| `FROM_EMAIL` | `noreply@yourdomain.com` |
+
+**Tip**: Generate a secure JWT_SECRET using:
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+### Step 4.4: Deploy
+
+1. Click **Create Web Service**
+2. Wait 3-5 minutes for the build and deploy
+3. Watch the logs for any errors
+
+### Step 4.5: Verify Backend is Running
+
+1. Once deployed, Render shows your service URL (e.g., `https://sponsor-portal-api.onrender.com`)
+2. Open in browser: `https://sponsor-portal-api.onrender.com/api/health`
+3. You should see: `{"status":"ok","timestamp":"..."}`
+
+---
+
+## Part 5: Connect Lovable Frontend to Backend
+
+### Step 5.1: Get Your Backend URL
+
+Your Render backend URL will be something like:
+```
+https://sponsor-portal-api.onrender.com
+```
+
+### Step 5.2: Update Lovable Environment Variable
+
+1. In Lovable, click the **project name** (top-left)
+2. Click **Settings**
+3. Scroll to **Environment Variables** section
+4. Click **Add Variable**
+5. Add:
+   - **Name**: `VITE_API_URL`
+   - **Value**: `https://sponsor-portal-api.onrender.com/api`
+6. Click **Save**
+
+### Step 5.3: Republish Frontend
+
+1. Click the **Publish** button (top-right)
+2. Click **Update** to redeploy with the new environment variable
+3. Wait for deployment to complete
+
+---
+
+## Part 6: Create Initial Admin User
+
+### Step 6.1: Connect to Database
+
+```bash
+psql "YOUR_DATABASE_URL"
+```
+
+### Step 6.2: Create Admin User
+
+Run this SQL (replace with your details):
 
 ```sql
--- Create app_role enum
-CREATE TYPE public.app_role AS ENUM ('super_admin', 'admin', 'teacher', 'sponsor');
+-- Generate a bcrypt hash for your password (use https://bcrypt-generator.com/)
+-- Or run this in Node: require('bcryptjs').hashSync('YourPassword123', 10)
 
--- Create user_roles table
-CREATE TABLE IF NOT EXISTS user_roles (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    role app_role NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (user_id, role)
+INSERT INTO users (email, password_hash, full_name, status)
+VALUES (
+  'admin@yourschool.com',
+  '$2a$10$...your_bcrypt_hash...',
+  'Admin User',
+  'active'
 );
 
-CREATE INDEX idx_user_roles_user ON user_roles(user_id);
-CREATE INDEX idx_user_roles_role ON user_roles(role);
+-- Get the user ID
+SELECT id FROM users WHERE email = 'admin@yourschool.com';
 
--- Migrate existing roles from users.roles array to user_roles table
+-- Add admin role (use the ID from above)
 INSERT INTO user_roles (user_id, role)
-SELECT u.id, unnest(u.roles)::app_role
-FROM users u
-WHERE u.roles IS NOT NULL AND array_length(u.roles, 1) > 0
-ON CONFLICT (user_id, role) DO NOTHING;
-
--- Remove roles column from users table (after migration)
-ALTER TABLE users DROP COLUMN IF EXISTS roles;
+VALUES ('paste-user-id-here', 'admin');
 ```
 
----
+### Step 6.3: Test Login
 
-### Issue 2: Missing Columns in Tables
-
-**Problem**: Controllers reference columns that don't exist in the migration.
-
-| Table | Missing Column | Used By |
-|-------|----------------|---------|
-| `pending_registrations` | `password_hash` | `authController.register()`, `registrationsController.approveRegistration()` |
-| `children` | `deleted_by` | `childrenController.deleteChild()` |
-| `progress_reports` | `deleted_by`, `feedback`, `reviewed_by`, `reviewed_at`, `submitted_at` | `reportsController.deleteReport()`, `reportsController.requestRevision()` |
-| `newsletters` | `deleted_by` | Soft delete pattern |
-| `events` | `deleted_by` | Soft delete pattern |
-| `users` | `deleted_by` | `sponsorsController.deleteSponsor()` |
-| `sponsorships` | `updated_at`, `deleted_by` | `sponsorshipsController.updateSponsorship()` |
-| `notifications` | `read_at` (exists as `is_read BOOLEAN`) | `notificationsController` uses `read_at` timestamp |
-
-**New Migration File**: `backend/migrations/003_add_missing_columns.sql`
-
-```sql
--- Add password_hash to pending_registrations
-ALTER TABLE pending_registrations ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
-
--- Add deleted_by to soft-delete tables
-ALTER TABLE children ADD COLUMN IF NOT EXISTS deleted_by UUID REFERENCES users(id);
-ALTER TABLE progress_reports ADD COLUMN IF NOT EXISTS deleted_by UUID REFERENCES users(id);
-ALTER TABLE newsletters ADD COLUMN IF NOT EXISTS deleted_by UUID REFERENCES users(id);
-ALTER TABLE events ADD COLUMN IF NOT EXISTS deleted_by UUID REFERENCES users(id);
-ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_by UUID REFERENCES users(id);
-ALTER TABLE sponsorships ADD COLUMN IF NOT EXISTS deleted_by UUID REFERENCES users(id);
-
--- Add review workflow columns to progress_reports
-ALTER TABLE progress_reports ADD COLUMN IF NOT EXISTS feedback TEXT;
-ALTER TABLE progress_reports ADD COLUMN IF NOT EXISTS reviewed_by UUID REFERENCES users(id);
-ALTER TABLE progress_reports ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP WITH TIME ZONE;
-ALTER TABLE progress_reports ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMP WITH TIME ZONE;
-
--- Add updated_at to sponsorships
-ALTER TABLE sponsorships ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
-
--- Add trigger for sponsorships updated_at
-CREATE TRIGGER update_sponsorships_updated_at
-    BEFORE UPDATE ON sponsorships
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
-
--- Fix notifications: rename is_read to read_at
-ALTER TABLE notifications DROP COLUMN IF EXISTS is_read;
-ALTER TABLE notifications ADD COLUMN IF NOT EXISTS read_at TIMESTAMP WITH TIME ZONE;
-
--- Update progress_reports status enum to include new statuses
-ALTER TABLE progress_reports DROP CONSTRAINT IF EXISTS progress_reports_status_check;
-ALTER TABLE progress_reports ADD CONSTRAINT progress_reports_status_check 
-    CHECK (status IN ('draft', 'pending_review', 'needs_revision', 'approved', 'published'));
-```
+1. Go to your published Lovable app
+2. Navigate to the login page
+3. Enter your admin credentials
+4. You should be redirected to the admin dashboard
 
 ---
 
-### Issue 3: Missing Payments Table & API
+## Troubleshooting
 
-**Problem**: Phase 5 Payment System has no backend implementation.
+### Backend not starting?
+- Check Render logs for errors
+- Verify all environment variables are set correctly
+- Ensure `DATABASE_URL` is the External URL, not Internal
 
-**New Migration File**: `backend/migrations/004_payments_table.sql`
+### Database connection failed?
+- Verify you're using the External Database URL
+- Check if your IP needs to be whitelisted (not needed on Render)
+- Ensure database is running (green status on Render)
 
-```sql
--- Create payments table
-CREATE TABLE IF NOT EXISTS payments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    sponsor_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    child_id UUID REFERENCES children(id) ON DELETE SET NULL,
-    amount DECIMAL(10, 2) NOT NULL,
-    currency VARCHAR(3) NOT NULL DEFAULT 'INR',
-    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'overdue', 'cancelled')),
-    payment_method VARCHAR(20) CHECK (payment_method IN ('upi', 'bank_transfer', 'cheque', 'cash')),
-    payment_date DATE,
-    due_date DATE NOT NULL,
-    receipt_number VARCHAR(50) UNIQUE,
-    reference_number VARCHAR(100),
-    notes TEXT,
-    created_by UUID REFERENCES users(id),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP WITH TIME ZONE,
-    deleted_by UUID REFERENCES users(id)
-);
+### Frontend shows network errors?
+- Check browser console for CORS errors
+- Verify `VITE_API_URL` includes `/api` at the end
+- Republish frontend after setting environment variable
 
-CREATE INDEX idx_payments_sponsor ON payments(sponsor_id) WHERE deleted_at IS NULL;
-CREATE INDEX idx_payments_child ON payments(child_id) WHERE deleted_at IS NULL;
-CREATE INDEX idx_payments_status ON payments(status) WHERE deleted_at IS NULL;
-CREATE INDEX idx_payments_due_date ON payments(due_date) WHERE deleted_at IS NULL;
-
-CREATE TRIGGER update_payments_updated_at
-    BEFORE UPDATE ON payments
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
-```
+### Login not working?
+- Verify admin user was created with correct password hash
+- Check that user_roles entry exists for your user
+- Check backend logs for authentication errors
 
 ---
 
-## Part 2: New Backend Payments API
+## Quick Reference
 
-Create complete payments backend:
+| Resource | URL/Value |
+|----------|-----------|
+| **Lovable Published App** | `https://sponsor-story-stream.lovable.app` |
+| **Backend API** | `https://your-service.onrender.com/api` |
+| **Database Dashboard** | Render Dashboard → PostgreSQL |
+| **Backend Logs** | Render Dashboard → Web Service → Logs |
 
-| File | Description |
-|------|-------------|
-| `backend/src/schemas/payment.ts` | Zod validation schemas |
-| `backend/src/controllers/paymentsController.ts` | CRUD operations, stats, receipt generation |
-| `backend/src/routes/payments.ts` | Route definitions |
-| `backend/src/routes/index.ts` | Register payments routes |
-
-**Endpoints**:
-- `GET /api/payments` - List payments with filters
-- `GET /api/payments/stats` - Financial dashboard stats
-- `GET /api/payments/:id` - Get single payment
-- `POST /api/payments` - Record new payment
-- `PUT /api/payments/:id` - Update payment
-- `PUT /api/payments/:id/mark-paid` - Mark as paid
-- `DELETE /api/payments/:id` - Soft delete
-
----
-
-## Part 3: Frontend Migration from Mock to Real API
-
-### Pages Still Using Mock Data (`useData()`)
-
-| Page | Current State | Action |
-|------|---------------|--------|
-| `src/pages/admin/AdminDashboard.tsx` | Uses `useData()` for stats | Replace with `useChildren`, `useReports`, etc. |
-| `src/pages/admin/ReportReview.tsx` | Uses `useData()` | Replace with `useReports` |
-| `src/pages/admin/SponsorDetail.tsx` | Uses `useData()` | Replace with `useSponsor` |
-| `src/pages/admin/FinancialDashboard.tsx` | Uses `mockPayments` | Create `usePaymentStats` hook |
-| `src/pages/admin/PaymentManagement.tsx` | Uses `mockPayments` | Create `usePayments` hook |
-| `src/pages/sponsor/SponsorHome.tsx` | Uses `useData()` | Replace with `useSponsorStats`, `useMyChildren` |
-| `src/pages/sponsor/SponsorChildrenList.tsx` | Uses `useData()` | Replace with `useMyChildren` |
-| `src/pages/sponsor/ChildProgress.tsx` | Uses `useData()` | Replace with `useChild`, `useReports` |
-| `src/pages/sponsor/ReportDetail.tsx` | Uses `useData()` | Replace with `useReport` |
-| `src/pages/sponsor/SponsorNewsletters.tsx` | Uses `useData()` | Replace with `useNewsletters` |
-| `src/pages/sponsor/SponsorEvents.tsx` | Uses `useData()` | Replace with `useEvents` |
-
-### New Hooks to Add in `useApi.ts`
-
-```typescript
-// Payment hooks
-usePayments(params)
-usePayment(id)
-usePaymentStats()
-useCreatePayment()
-useUpdatePayment()
-useMarkPaymentPaid()
-useDeletePayment()
-```
-
----
-
-## Part 4: Files to Create/Modify
-
-### New Files
-
-| File | Purpose |
-|------|---------|
-| `backend/migrations/002_user_roles_table.sql` | User roles table |
-| `backend/migrations/003_add_missing_columns.sql` | Missing columns |
-| `backend/migrations/004_payments_table.sql` | Payments table |
-| `backend/src/schemas/payment.ts` | Payment validation |
-| `backend/src/controllers/paymentsController.ts` | Payment CRUD |
-| `backend/src/routes/payments.ts` | Payment routes |
-
-### Modified Files
-
-| File | Changes |
-|------|---------|
-| `backend/src/routes/index.ts` | Add payments routes |
-| `src/hooks/useApi.ts` | Add payment hooks |
-| `src/pages/admin/AdminDashboard.tsx` | Replace useData with API hooks |
-| `src/pages/admin/ReportReview.tsx` | Replace useData with API hooks |
-| `src/pages/admin/SponsorDetail.tsx` | Replace useData with API hooks |
-| `src/pages/admin/FinancialDashboard.tsx` | Replace mock data with API hooks |
-| `src/pages/admin/PaymentManagement.tsx` | Replace mock data with API hooks |
-| `src/pages/sponsor/SponsorHome.tsx` | Replace useData with API hooks |
-| `src/pages/sponsor/SponsorChildrenList.tsx` | Replace useData with API hooks |
-| `src/pages/sponsor/ChildProgress.tsx` | Replace useData with API hooks |
-| `src/pages/sponsor/ReportDetail.tsx` | Replace useData with API hooks |
-| `src/pages/sponsor/SponsorNewsletters.tsx` | Replace useData with API hooks |
-| `src/pages/sponsor/SponsorEvents.tsx` | Replace useData with API hooks |
-
----
-
-## Part 5: Deployment Preparation
-
-### Environment Variables for Render
-
-```text
-# Required for backend deployment
-DATABASE_URL=postgresql://user:pass@host:5432/sponsor_portal
-JWT_SECRET=<generate-secure-256-bit-key>
-JWT_EXPIRES_IN=1h
-NODE_ENV=production
-
-# Optional but recommended
-CLOUDINARY_CLOUD_NAME=<your-cloud-name>
-CLOUDINARY_API_KEY=<your-api-key>
-CLOUDINARY_API_SECRET=<your-api-secret>
-RESEND_API_KEY=<your-resend-key>
-FROM_EMAIL=noreply@yourdomain.com
-FRONTEND_URL=https://sponsor-story-stream.lovable.app
-```
-
-### Frontend Environment Variable
-
-```text
-# Update in Lovable project settings
-VITE_API_URL=https://your-render-backend.onrender.com/api
-```
-
-### Database Setup Steps
-
-1. Create PostgreSQL database on Render or external provider
-2. Run migrations in order:
-   - `001_initial_schema.sql`
-   - `002_user_roles_table.sql`
-   - `003_add_missing_columns.sql`
-   - `004_payments_table.sql`
-3. Verify seed admin user was created
-
-### Backend Deployment Checklist
-
-1. Push backend code to repository
-2. Create Web Service on Render
-3. Set environment variables
-4. Deploy and verify health check at `/api/health`
-5. Update frontend `VITE_API_URL`
-
----
-
-## Implementation Order
-
-1. **Create database migrations** (002, 003, 004)
-2. **Create payments backend** (schema, controller, routes)
-3. **Add payment hooks** to `useApi.ts`
-4. **Migrate admin pages** from mock to real API
-5. **Migrate sponsor pages** from mock to real API
-6. **Test end-to-end** with local backend
-7. **Deploy to Render**
-8. **Update frontend API URL**
-9. **Final verification**
-
----
-
-## Risk Mitigation
-
-- **Data Loss**: The migration preserves existing roles before dropping the column
-- **Breaking Changes**: All migrations use `IF NOT EXISTS` and `IF EXISTS` guards
-- **Rollback**: Each migration can be reversed if needed
-- **Testing**: Run migrations on local DB first before production
