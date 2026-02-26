@@ -240,7 +240,7 @@ export async function batchApproveRegistrations(req: Request, res: Response, nex
           
           // Send approval email
           if (verifyResendConfig()) {
-            await resend.emails.send({
+            await getResendClient()?.emails.send({
               from: emailConfig.from,
               to: pending.email,
               subject: 'Your Registration Has Been Approved!',

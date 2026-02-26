@@ -285,7 +285,7 @@ export async function batchSendInvitations(req: Request, res: Response, next: Ne
         
         // Send email
         if (verifyResendConfig()) {
-          await resend.emails.send({
+          await getResendClient()?.emails.send({
             from: emailConfig.from,
             to: data.email,
             subject: 'You\'re Invited to Join as a Sponsor',

@@ -297,7 +297,7 @@ export async function publishReport(req: Request, res: Response, next: NextFunct
       );
       
       for (const sponsor of sponsors.rows) {
-        await resend.emails.send({
+        await getResendClient()?.emails.send({
           from: emailConfig.from,
           to: sponsor.email,
           subject: `New Progress Report for ${childName}`,
