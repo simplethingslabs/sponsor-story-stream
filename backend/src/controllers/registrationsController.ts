@@ -167,7 +167,7 @@ export async function rejectRegistration(req: Request, res: Response, next: Next
     
     // Send rejection email
     if (verifyResendConfig()) {
-      await resend.emails.send({
+      await getResendClient()?.emails.send({
         from: emailConfig.from,
         to: pending.email,
         subject: 'Update on Your Registration',
