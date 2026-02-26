@@ -1,4 +1,4 @@
-import resend, { emailConfig, verifyResendConfig } from '../config/resend';
+import { getResendClient, emailConfig, verifyResendConfig } from '../config/resend';
 
 export interface EmailOptions {
   to: string | string[];
@@ -14,7 +14,9 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
   }
   
   try {
-    await resend.emails.send({
+    const client = getResendClient();
+    if (!client) return false;
+    await client.emails.send({
       from: emailConfig.from,
       to: Array.isArray(options.to) ? options.to : [options.to],
       subject: options.subject,

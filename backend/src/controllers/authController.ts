@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt, { type SignOptions } from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../config/database';
-import resend, { emailConfig, verifyResendConfig } from '../config/resend';
+import { getResendClient, emailConfig, verifyResendConfig } from '../config/resend';
 import { LoginInput, RegisterInput, ForgotPasswordInput, ResetPasswordInput, RefreshTokenInput } from '../schemas/auth';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -122,7 +122,7 @@ export async function register(req: Request, res: Response, next: NextFunction) 
       
       if (admins.rows.length > 0) {
         const adminEmails = admins.rows.map(a => a.email);
-        await resend.emails.send({
+        await getResendClient()?.emails.send({
           from: emailConfig.from,
           to: adminEmails,
           subject: 'New Sponsor Registration Pending',
@@ -241,7 +241,7 @@ export async function forgotPassword(req: Request, res: Response, next: NextFunc
     
     // Send email
     if (verifyResendConfig()) {
-      await resend.emails.send({
+      await getResendClient()?.emails.send({
         from: emailConfig.from,
         to: email,
         subject: 'Password Reset Request',
