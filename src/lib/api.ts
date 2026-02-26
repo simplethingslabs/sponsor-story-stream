@@ -2,7 +2,7 @@ import type { ApiResponse } from '@/types';
 
 // Configure your backend API URL here
 // After deploying to Render, update this to your Render API URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://sponsor-portal-api-a49s.onrender.com/api';
 
 // Token refresh state
 let isRefreshing = false;
