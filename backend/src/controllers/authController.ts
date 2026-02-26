@@ -241,7 +241,7 @@ export async function forgotPassword(req: Request, res: Response, next: NextFunc
     
     // Send email
     if (verifyResendConfig()) {
-      await resend.emails.send({
+      await getResendClient()?.emails.send({
         from: emailConfig.from,
         to: email,
         subject: 'Password Reset Request',
