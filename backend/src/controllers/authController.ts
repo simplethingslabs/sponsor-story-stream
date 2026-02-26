@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import jwt, { type SignOptions } from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../config/database';
 import resend, { emailConfig, verifyResendConfig } from '../config/resend';
@@ -15,7 +15,7 @@ function generateTokens(userId: string, roles: string[]) {
   const accessToken = jwt.sign(
     { userId, roles },
     JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
+    { expiresIn: JWT_EXPIRES_IN as SignOptions['expiresIn'] }
   );
   
   const refreshToken = uuidv4();
