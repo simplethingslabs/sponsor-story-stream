@@ -175,3 +175,34 @@ export function sanitizeString(str: string): string {
     .replace(/'/g, '&#x27;')
     .replace(/\//g, '&#x2F;');
 }
+
+// Format paginated response
+export function formatPaginatedResponse<T>(
+  data: T[],
+  total: number,
+  page: number,
+  limit: number
+) {
+  return {
+    data,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}
+
+// Build paginated query helper
+export function buildPaginatedQuery(
+  baseQuery: string,
+  page: number,
+  limit: number
+) {
+  const offset = (page - 1) * limit;
+  return {
+    query: `${baseQuery} LIMIT $\{limit} OFFSET $\{offset}`,
+    offset,
+  };
+}
