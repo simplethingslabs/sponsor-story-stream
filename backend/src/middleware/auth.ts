@@ -101,7 +101,7 @@ export async function authenticate(
 // Optional authentication - doesn't fail if no token
 export async function optionalAuth(
   req: AuthenticatedRequest,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ): Promise<void> {
   const authHeader = req.headers.authorization;
@@ -153,8 +153,8 @@ export function generateAccessToken(user: UserPublic): string {
   };
   
   return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '15m',
-  });
+    expiresIn: (process.env.JWT_EXPIRES_IN || '15m') as string & jwt.SignOptions['expiresIn'],
+  } as jwt.SignOptions);
 }
 
 // Generate refresh token
@@ -165,8 +165,8 @@ export function generateRefreshToken(user: UserPublic): string {
   };
   
   return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
-  });
+    expiresIn: (process.env.JWT_REFRESH_EXPIRES_IN || '7d') as string & jwt.SignOptions['expiresIn'],
+  } as jwt.SignOptions);
 }
 
 // Verify refresh token
