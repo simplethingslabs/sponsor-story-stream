@@ -176,13 +176,21 @@ export async function getAuditLogs(options: {
 
 export { AUDITED_TABLES };
 
+// Audit log helper type for route-level usage
+interface RouteAuditHelper {
+  create: (recordId: string, newData: Record<string, unknown>) => Promise<void>;
+  update: (recordId: string, oldData: Record<string, unknown>, newData: Record<string, unknown>) => Promise<void>;
+  delete: (recordId: string, oldData: Record<string, unknown>) => Promise<void>;
+  restore: (recordId: string, newData: Record<string, unknown>) => Promise<void>;
+}
+
 // Middleware factory for route-level audit logging
 export function auditLog(tableName: string) {
   return (req: AuthenticatedRequest, _res: Response, next: NextFunction): void => {
     const ipAddress = req.ip || req.socket.remoteAddress;
     const userAgent = req.headers['user-agent'];
 
-    (req as AuthenticatedRequest & { audit: typeof auditHelperObj }).audit = {
+    const routeAudit: RouteAuditHelper = {
       create: (recordId: string, newData: Record<string, unknown>) =>
         createAuditLog(req.userId, 'create', tableName, recordId, undefined, newData, ipAddress, userAgent),
       update: (recordId: string, oldData: Record<string, unknown>, newData: Record<string, unknown>) =>
@@ -193,13 +201,8 @@ export function auditLog(tableName: string) {
         createAuditLog(req.userId, 'restore', tableName, recordId, undefined, newData, ipAddress, userAgent),
     };
 
+    (req as any).audit = routeAudit;
+
     next();
   };
 }
-
-const auditHelperObj = {
-  create: async (_recordId: string, _newData: Record<string, unknown>) => {},
-  update: async (_recordId: string, _oldData: Record<string, unknown>, _newData: Record<string, unknown>) => {},
-  delete: async (_recordId: string, _oldData: Record<string, unknown>) => {},
-  restore: async (_recordId: string, _newData: Record<string, unknown>) => {},
-};
