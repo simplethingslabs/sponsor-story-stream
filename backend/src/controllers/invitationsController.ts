@@ -99,7 +99,7 @@ export async function sendInvitation(req: Request, res: Response, next: NextFunc
     
     // Send invitation email
     if (verifyResendConfig()) {
-      await resend.emails.send({
+      await getResendClient()?.emails.send({
         from: emailConfig.from,
         to: data.email,
         subject: 'You\'re Invited to Join as a Sponsor',
