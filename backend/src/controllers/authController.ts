@@ -15,7 +15,7 @@ function generateTokens(userId: string, roles: string[]) {
   const accessToken = jwt.sign(
     { userId, roles },
     JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
+    { expiresIn: JWT_EXPIRES_IN as SignOptions['expiresIn'] }
   );
   
   const refreshToken = uuidv4();

@@ -52,7 +52,7 @@ export async function query<T>(
 
 // Transaction helper
 export async function transaction<T>(
-  callback: (client: ReturnType<typeof pool.connect> extends Promise<infer C> ? C : never) => Promise<T>
+  callback: (client: PoolClient) => Promise<T>
 ): Promise<T> {
   const client = await pool.connect();
   try {
