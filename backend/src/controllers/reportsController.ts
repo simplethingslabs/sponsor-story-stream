@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../config/database';
-import resend, { emailConfig, verifyResendConfig } from '../config/resend';
+import { getResendClient, emailConfig, verifyResendConfig } from '../config/resend';
 import { CreateReportInput, UpdateReportInput, ReportQueryInput } from '../schemas/report';
 import { formatPaginatedResponse } from '../utils/helpers';
 import { notifyChildSponsors, createNotification } from '../services/notificationService';
