@@ -122,7 +122,7 @@ export async function register(req: Request, res: Response, next: NextFunction) 
       
       if (admins.rows.length > 0) {
         const adminEmails = admins.rows.map(a => a.email);
-        await resend.emails.send({
+        await getResendClient()?.emails.send({
           from: emailConfig.from,
           to: adminEmails,
           subject: 'New Sponsor Registration Pending',
