@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../config/database';
-import resend, { emailConfig, verifyResendConfig } from '../config/resend';
+import { getResendClient, emailConfig, verifyResendConfig } from '../config/resend';
 import { formatPaginatedResponse } from '../utils/helpers';
 
 // Get pending registrations
@@ -113,7 +113,7 @@ export async function approveRegistration(req: Request, res: Response, next: Nex
       
       // Send approval email
       if (verifyResendConfig()) {
-        await resend.emails.send({
+        await getResendClient()?.emails.send({
           from: emailConfig.from,
           to: pending.email,
           subject: 'Your Registration Has Been Approved!',
@@ -167,7 +167,7 @@ export async function rejectRegistration(req: Request, res: Response, next: Next
     
     // Send rejection email
     if (verifyResendConfig()) {
-      await resend.emails.send({
+      await getResendClient()?.emails.send({
         from: emailConfig.from,
         to: pending.email,
         subject: 'Update on Your Registration',
@@ -240,7 +240,7 @@ export async function batchApproveRegistrations(req: Request, res: Response, nex
           
           // Send approval email
           if (verifyResendConfig()) {
-            await resend.emails.send({
+            await getResendClient()?.emails.send({
               from: emailConfig.from,
               to: pending.email,
               subject: 'Your Registration Has Been Approved!',

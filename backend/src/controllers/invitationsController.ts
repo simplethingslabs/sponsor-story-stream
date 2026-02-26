@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../config/database';
-import resend, { emailConfig, verifyResendConfig } from '../config/resend';
+import { getResendClient, emailConfig, verifyResendConfig } from '../config/resend';
 import { SendInvitationInput, InvitationQueryInput } from '../schemas/invitation';
 import { formatPaginatedResponse } from '../utils/helpers';
 
@@ -99,7 +99,7 @@ export async function sendInvitation(req: Request, res: Response, next: NextFunc
     
     // Send invitation email
     if (verifyResendConfig()) {
-      await resend.emails.send({
+      await getResendClient()?.emails.send({
         from: emailConfig.from,
         to: data.email,
         subject: 'You\'re Invited to Join as a Sponsor',
@@ -161,7 +161,7 @@ export async function resendInvitation(req: Request, res: Response, next: NextFu
     
     // Send email
     if (verifyResendConfig()) {
-      await resend.emails.send({
+      await getResendClient()?.emails.send({
         from: emailConfig.from,
         to: invite.email,
         subject: 'Reminder: You\'re Invited to Join as a Sponsor',
@@ -285,7 +285,7 @@ export async function batchSendInvitations(req: Request, res: Response, next: Ne
         
         // Send email
         if (verifyResendConfig()) {
-          await resend.emails.send({
+          await getResendClient()?.emails.send({
             from: emailConfig.from,
             to: data.email,
             subject: 'You\'re Invited to Join as a Sponsor',
