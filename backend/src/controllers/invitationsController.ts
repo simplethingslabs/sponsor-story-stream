@@ -161,7 +161,7 @@ export async function resendInvitation(req: Request, res: Response, next: NextFu
     
     // Send email
     if (verifyResendConfig()) {
-      await resend.emails.send({
+      await getResendClient()?.emails.send({
         from: emailConfig.from,
         to: invite.email,
         subject: 'Reminder: You\'re Invited to Join as a Sponsor',
