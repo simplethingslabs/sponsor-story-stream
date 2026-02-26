@@ -1,4 +1,4 @@
-import resend, { emailConfig, verifyResendConfig } from '../config/resend';
+import { getResendClient, emailConfig, verifyResendConfig } from '../config/resend';
 
 export interface EmailOptions {
   to: string | string[];
