@@ -2,7 +2,7 @@ import { Router } from 'express';
 import * as paymentsController from '../controllers/paymentsController';
 import { authenticate } from '../middleware/auth';
 import { requireAnyRole } from '../middleware/authorize';
-import { validate } from '../middleware/validate';
+import { validateBody } from '../middleware/validate';
 import { createPaymentSchema, updatePaymentSchema, markPaidSchema } from '../schemas/payment';
 
 const router = Router();
@@ -20,13 +20,13 @@ router.get('/stats', requireAnyRole(['super_admin', 'admin']), paymentsControlle
 router.get('/:id', requireAnyRole(['super_admin', 'admin']), paymentsController.getPayment);
 
 // Create new payment (admin only)
-router.post('/', requireAnyRole(['super_admin', 'admin']), validate(createPaymentSchema), paymentsController.createPayment);
+router.post('/', requireAnyRole(['super_admin', 'admin']), validateBody(createPaymentSchema), paymentsController.createPayment);
 
 // Update payment (admin only)
-router.put('/:id', requireAnyRole(['super_admin', 'admin']), validate(updatePaymentSchema), paymentsController.updatePayment);
+router.put('/:id', requireAnyRole(['super_admin', 'admin']), validateBody(updatePaymentSchema), paymentsController.updatePayment);
 
 // Mark payment as paid (admin only)
-router.put('/:id/mark-paid', requireAnyRole(['super_admin', 'admin']), validate(markPaidSchema), paymentsController.markPaymentPaid);
+router.put('/:id/mark-paid', requireAnyRole(['super_admin', 'admin']), validateBody(markPaidSchema), paymentsController.markPaymentPaid);
 
 // Soft delete payment (admin only)
 router.delete('/:id', requireAnyRole(['super_admin', 'admin']), paymentsController.deletePayment);

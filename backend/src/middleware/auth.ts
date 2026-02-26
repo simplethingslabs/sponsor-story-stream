@@ -165,8 +165,8 @@ export function generateRefreshToken(user: UserPublic): string {
   };
   
   return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
-  });
+    expiresIn: (process.env.JWT_REFRESH_EXPIRES_IN || '7d') as string & jwt.SignOptions['expiresIn'],
+  } as jwt.SignOptions);
 }
 
 // Verify refresh token

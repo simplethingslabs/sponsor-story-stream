@@ -71,8 +71,8 @@ export function errorHandler(
   }
   
   // Handle PostgreSQL errors
-  if ((err as Record<string, unknown>).code) {
-    const pgError = err as Record<string, unknown>;
+  if ((err as unknown as Record<string, unknown>).code) {
+    const pgError = err as unknown as Record<string, unknown>;
     
     // Unique violation
     if (pgError.code === '23505') {

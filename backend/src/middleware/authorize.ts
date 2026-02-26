@@ -30,6 +30,16 @@ export function authorize(...allowedRoles: UserRole[]) {
   };
 }
 
+// Alias: check if user has any of the specified roles
+export function requireAnyRole(roles: UserRole[]) {
+  return authorize(...roles);
+}
+
+// Alias: check if user has a specific single role
+export function requireRole(role: UserRole) {
+  return authorize(role);
+}
+
 // Check if user is super admin
 export function requireSuperAdmin(
   req: AuthenticatedRequest,

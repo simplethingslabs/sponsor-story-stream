@@ -164,3 +164,14 @@ export function chunkArray<T>(array: T[], size: number): T[][] {
   }
   return chunks;
 }
+
+// Sanitize string to prevent XSS
+export function sanitizeString(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;');
+}
