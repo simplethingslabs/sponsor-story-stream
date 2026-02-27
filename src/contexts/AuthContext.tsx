@@ -43,6 +43,19 @@ const DEMO_USERS: Record<string, { password: string; user: UserWithRoles }> = {
       roles: ['teacher'],
     },
   },
+  'anantvalleypublicschool@gmail.com': {
+    password: 'admin123',
+    user: {
+      id: 'admin-2',
+      email: 'anantvalleypublicschool@gmail.com',
+      full_name: 'Anant Valley Admin',
+      phone: '+1234567890',
+      avatar_url: undefined,
+      created_at: '2023-01-01T00:00:00Z',
+      updated_at: '2023-01-01T00:00:00Z',
+      roles: ['admin'],
+    },
+  },
 };
 
 interface AuthContextType extends AuthState {
