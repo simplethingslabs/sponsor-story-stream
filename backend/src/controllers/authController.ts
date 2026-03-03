@@ -45,6 +45,11 @@ export async function login(req: Request, res: Response, next: NextFunction) {
     
     const user = userResult.rows[0];
     
+    // Parse PostgreSQL array string to JS array
+    if (typeof user.roles === 'string') {
+      user.roles = user.roles.replace(/[{}]/g, '').split(',').filter(Boolean);
+    }
+    
     // Check password
     const validPassword = await bcrypt.compare(password, user.password_hash);
     if (!validPassword) {
