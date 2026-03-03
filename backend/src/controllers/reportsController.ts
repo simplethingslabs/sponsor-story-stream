@@ -53,7 +53,7 @@ export async function getReports(req: Request, res: Response, next: NextFunction
       `SELECT r.*,
               c.first_name || ' ' || c.last_name as child_name, c.photo_url as child_photo,
               u.full_name as teacher_name,
-              (SELECT json_agg(rm.*) FROM report_media rm WHERE rm.report_id = r.id ORDER BY rm.order) as media
+              (SELECT json_agg(rm.* ORDER BY rm."order") FROM report_media rm WHERE rm.report_id = r.id) as media
        FROM progress_reports r
        JOIN children c ON r.child_id = c.id
        LEFT JOIN users u ON r.teacher_id = u.id
@@ -78,7 +78,7 @@ export async function getReport(req: Request, res: Response, next: NextFunction)
       `SELECT r.*,
               c.first_name || ' ' || c.last_name as child_name, c.photo_url as child_photo, c.grade as child_grade,
               u.full_name as teacher_name,
-              (SELECT json_agg(rm.* ORDER BY rm.order) FROM report_media rm WHERE rm.report_id = r.id) as media
+              (SELECT json_agg(rm.* ORDER BY rm."order") FROM report_media rm WHERE rm.report_id = r.id) as media
        FROM progress_reports r
        JOIN children c ON r.child_id = c.id
        LEFT JOIN users u ON r.teacher_id = u.id
@@ -131,7 +131,7 @@ export async function createReport(req: Request, res: Response, next: NextFuncti
       const fullResult = await pool.query(
         `SELECT r.*,
                 c.first_name || ' ' || c.last_name as child_name,
-                (SELECT json_agg(rm.* ORDER BY rm.order) FROM report_media rm WHERE rm.report_id = r.id) as media
+                (SELECT json_agg(rm.* ORDER BY rm."order") FROM report_media rm WHERE rm.report_id = r.id) as media
          FROM progress_reports r
          JOIN children c ON r.child_id = c.id
          WHERE r.id = $1`,
@@ -225,7 +225,7 @@ export async function updateReport(req: Request, res: Response, next: NextFuncti
       const result = await pool.query(
         `SELECT r.*,
                 c.first_name || ' ' || c.last_name as child_name,
-                (SELECT json_agg(rm.* ORDER BY rm.order) FROM report_media rm WHERE rm.report_id = r.id) as media
+                (SELECT json_agg(rm.* ORDER BY rm."order") FROM report_media rm WHERE rm.report_id = r.id) as media
          FROM progress_reports r
          JOIN children c ON r.child_id = c.id
          WHERE r.id = $1`,
@@ -494,7 +494,7 @@ export async function getReportsForSponsor(req: Request, res: Response, next: Ne
     const result = await pool.query(
       `SELECT r.*, 
               c.first_name || ' ' || c.last_name as child_name, c.photo_url as child_photo,
-              (SELECT json_agg(rm.* ORDER BY rm.order) FROM report_media rm WHERE rm.report_id = r.id) as media
+              (SELECT json_agg(rm.* ORDER BY rm."order") FROM report_media rm WHERE rm.report_id = r.id) as media
        FROM progress_reports r
        JOIN sponsorships s ON r.child_id = s.child_id
        JOIN children c ON r.child_id = c.id
