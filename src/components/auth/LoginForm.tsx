@@ -105,16 +105,6 @@ export function LoginForm() {
             )}
           </div>
 
-          {/* Demo credentials hint */}
-          <div className="rounded-lg bg-muted/50 p-3 text-sm">
-            <p className="font-medium text-muted-foreground">Demo Accounts:</p>
-            <ul className="mt-1 space-y-1 text-muted-foreground">
-              <li>Admin: admin@school.org / admin123</li>
-              <li>Admin: anantvalleypublicschool@gmail.com / admin123</li>
-              <li>Teacher: teacher@school.org / teacher123</li>
-              <li>Sponsor: sponsor@example.com / sponsor123</li>
-            </ul>
-          </div>
         </CardContent>
         
         <CardFooter className="flex flex-col space-y-4">

@@ -30,9 +30,12 @@ export async function authenticate(
     
     // Fetch user from database
     const { rows } = await query<User>(
-      `SELECT id, email, full_name, phone, avatar_url, roles, is_active, created_at, updated_at
-       FROM users 
-       WHERE id = $1 AND deleted_at IS NULL`,
+      `SELECT u.id, u.email, u.full_name, u.phone, u.avatar_url, u.is_active, u.created_at, u.updated_at,
+              COALESCE(array_agg(ur.role) FILTER (WHERE ur.role IS NOT NULL), '{}') as roles
+       FROM users u
+       LEFT JOIN user_roles ur ON u.id = ur.user_id
+       WHERE u.id = $1 AND u.deleted_at IS NULL
+       GROUP BY u.id`,
       [decoded.userId]
     );
     
@@ -46,6 +49,11 @@ export async function authenticate(
     }
     
     const user = rows[0];
+    
+    // Parse PostgreSQL array string to JS array
+    if (typeof user.roles === 'string') {
+      user.roles = (user.roles as string).replace(/[{}]/g, '').split(',').filter(Boolean) as any;
+    }
     
     if (!user.is_active) {
       res.status(401).json({
@@ -116,9 +124,12 @@ export async function optionalAuth(
     const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
     
     const { rows } = await query<User>(
-      `SELECT id, email, full_name, phone, avatar_url, roles, is_active, created_at, updated_at
-       FROM users 
-       WHERE id = $1 AND deleted_at IS NULL AND is_active = true`,
+      `SELECT u.id, u.email, u.full_name, u.phone, u.avatar_url, u.is_active, u.created_at, u.updated_at,
+              COALESCE(array_agg(ur.role) FILTER (WHERE ur.role IS NOT NULL), '{}') as roles
+       FROM users u
+       LEFT JOIN user_roles ur ON u.id = ur.user_id
+       WHERE u.id = $1 AND u.deleted_at IS NULL AND u.is_active = true
+       GROUP BY u.id`,
       [decoded.userId]
     );
     

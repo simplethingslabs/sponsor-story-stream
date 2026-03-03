@@ -45,6 +45,11 @@ export async function login(req: Request, res: Response, next: NextFunction) {
     
     const user = userResult.rows[0];
     
+    // Parse PostgreSQL array string to JS array
+    if (typeof user.roles === 'string') {
+      user.roles = user.roles.replace(/[{}]/g, '').split(',').filter(Boolean);
+    }
+    
     // Check password
     const validPassword = await bcrypt.compare(password, user.password_hash);
     if (!validPassword) {
@@ -327,7 +332,8 @@ export async function refreshToken(req: Request, res: Response, next: NextFuncti
       return res.status(401).json({ error: 'Invalid or expired refresh token' });
     }
     
-    const { user_id, roles } = tokenResult.rows[0];
+    const { user_id, roles: rawRoles } = tokenResult.rows[0];
+    const roles = typeof rawRoles === 'string' ? rawRoles.replace(/[{}]/g, '').split(',').filter(Boolean) : rawRoles;
     
     // Delete old refresh token
     await pool.query('DELETE FROM refresh_tokens WHERE token = $1', [refresh_token]);
@@ -386,7 +392,13 @@ export async function getCurrentUser(req: Request, res: Response, next: NextFunc
       return res.status(404).json({ error: 'User not found' });
     }
     
-    res.json(result.rows[0]);
+    const userData = result.rows[0];
+    // Parse PostgreSQL array string to JS array
+    if (typeof userData.roles === 'string') {
+      userData.roles = userData.roles.replace(/[{}]/g, '').split(',').filter(Boolean);
+    }
+    
+    res.json(userData);
   } catch (error) {
     next(error);
   }
