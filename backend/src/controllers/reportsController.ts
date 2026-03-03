@@ -494,7 +494,7 @@ export async function getReportsForSponsor(req: Request, res: Response, next: Ne
     const result = await pool.query(
       `SELECT r.*, 
               c.first_name || ' ' || c.last_name as child_name, c.photo_url as child_photo,
-              (SELECT json_agg(rm.* ORDER BY rm.order) FROM report_media rm WHERE rm.report_id = r.id) as media
+              (SELECT json_agg(rm.* ORDER BY rm."order") FROM report_media rm WHERE rm.report_id = r.id) as media
        FROM progress_reports r
        JOIN sponsorships s ON r.child_id = s.child_id
        JOIN children c ON r.child_id = c.id
