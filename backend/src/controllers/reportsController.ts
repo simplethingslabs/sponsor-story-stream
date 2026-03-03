@@ -78,7 +78,7 @@ export async function getReport(req: Request, res: Response, next: NextFunction)
       `SELECT r.*,
               c.first_name || ' ' || c.last_name as child_name, c.photo_url as child_photo, c.grade as child_grade,
               u.full_name as teacher_name,
-              (SELECT json_agg(rm.* ORDER BY rm.order) FROM report_media rm WHERE rm.report_id = r.id) as media
+              (SELECT json_agg(rm.* ORDER BY rm."order") FROM report_media rm WHERE rm.report_id = r.id) as media
        FROM progress_reports r
        JOIN children c ON r.child_id = c.id
        LEFT JOIN users u ON r.teacher_id = u.id
