@@ -30,9 +30,12 @@ export async function authenticate(
     
     // Fetch user from database
     const { rows } = await query<User>(
-      `SELECT id, email, full_name, phone, avatar_url, roles, is_active, created_at, updated_at
-       FROM users 
-       WHERE id = $1 AND deleted_at IS NULL`,
+      `SELECT u.id, u.email, u.full_name, u.phone, u.avatar_url, u.is_active, u.created_at, u.updated_at,
+              COALESCE(array_agg(ur.role) FILTER (WHERE ur.role IS NOT NULL), '{}') as roles
+       FROM users u
+       LEFT JOIN user_roles ur ON u.id = ur.user_id
+       WHERE u.id = $1 AND u.deleted_at IS NULL
+       GROUP BY u.id`,
       [decoded.userId]
     );
     
