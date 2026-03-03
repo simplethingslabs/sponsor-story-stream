@@ -391,7 +391,13 @@ export async function getCurrentUser(req: Request, res: Response, next: NextFunc
       return res.status(404).json({ error: 'User not found' });
     }
     
-    res.json(result.rows[0]);
+    const userData = result.rows[0];
+    // Parse PostgreSQL array string to JS array
+    if (typeof userData.roles === 'string') {
+      userData.roles = userData.roles.replace(/[{}]/g, '').split(',').filter(Boolean);
+    }
+    
+    res.json(userData);
   } catch (error) {
     next(error);
   }
