@@ -50,6 +50,11 @@ export async function authenticate(
     
     const user = rows[0];
     
+    // Parse PostgreSQL array string to JS array
+    if (typeof user.roles === 'string') {
+      user.roles = (user.roles as string).replace(/[{}]/g, '').split(',').filter(Boolean) as any;
+    }
+    
     if (!user.is_active) {
       res.status(401).json({
         error: 'Unauthorized',

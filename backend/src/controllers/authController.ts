@@ -332,7 +332,8 @@ export async function refreshToken(req: Request, res: Response, next: NextFuncti
       return res.status(401).json({ error: 'Invalid or expired refresh token' });
     }
     
-    const { user_id, roles } = tokenResult.rows[0];
+    const { user_id, roles: rawRoles } = tokenResult.rows[0];
+    const roles = typeof rawRoles === 'string' ? rawRoles.replace(/[{}]/g, '').split(',').filter(Boolean) : rawRoles;
     
     // Delete old refresh token
     await pool.query('DELETE FROM refresh_tokens WHERE token = $1', [refresh_token]);
