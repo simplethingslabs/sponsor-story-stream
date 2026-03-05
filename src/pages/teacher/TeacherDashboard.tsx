@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Users, 
   ClipboardCheck, 
@@ -12,23 +13,27 @@ import {
   Clock,
   AlertCircle,
   ChevronRight,
+  Loader2,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { mockChildren, mockProgressReports } from '@/data/mockData';
+import { useChildren, useReports } from '@/hooks/useApi';
 import { format } from 'date-fns';
 
 export default function TeacherDashboard() {
-  // Get teacher's assigned students (in demo, all students)
-  const myStudents = mockChildren.filter(c => c.status === 'active');
+  const { data: childrenData, isLoading: childrenLoading } = useChildren({ status: 'active' });
+  const { data: reportsData, isLoading: reportsLoading } = useReports();
+
+  const myStudents = childrenData?.data || [];
+  const allReports = reportsData?.data || [];
   
-  // Get reports that need work
-  const draftReports = mockProgressReports.filter(r => r.status === 'draft');
-  const needsRevisionReports = mockProgressReports.filter(r => r.status === 'needs_revision');
+  const draftReports = allReports.filter(r => r.status === 'draft');
+  const needsRevisionReports = allReports.filter(r => r.status === 'needs_revision');
   
-  // Calculate attendance stats (mock data)
   const todayDate = format(new Date(), 'yyyy-MM-dd');
-  const attendanceMarked = 3; // Mock: students marked today
+  const attendanceMarked = 3;
   const totalStudents = myStudents.length;
+
+  const isLoading = childrenLoading || reportsLoading;
 
   const stats = [
     {
@@ -65,10 +70,19 @@ export default function TeacherDashboard() {
     },
   ];
 
+  if (isLoading) {
+    return (
+      <TeacherLayout>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </TeacherLayout>
+    );
+  }
+
   return (
     <TeacherLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div>
           <h1 className="text-3xl font-bold text-foreground">Teacher Dashboard</h1>
           <p className="text-muted-foreground">
@@ -76,7 +90,6 @@ export default function TeacherDashboard() {
           </p>
         </div>
 
-        {/* Stats Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat) => (
             <Card key={stat.title}>
@@ -97,7 +110,6 @@ export default function TeacherDashboard() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* Quick Actions */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Quick Actions</CardTitle>
@@ -157,7 +169,6 @@ export default function TeacherDashboard() {
             </CardContent>
           </Card>
 
-          {/* Reports Needing Attention */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
@@ -174,7 +185,7 @@ export default function TeacherDashboard() {
                       Needs Revision
                     </p>
                     {needsRevisionReports.slice(0, 2).map((report) => {
-                      const child = mockChildren.find(c => c.id === report.child_id);
+                      const child = myStudents.find(c => c.id === report.child_id);
                       return (
                         <div key={report.id} className="flex items-center gap-3 rounded-lg border border-destructive/20 bg-destructive/5 p-3">
                           <Avatar className="h-10 w-10">
@@ -200,7 +211,7 @@ export default function TeacherDashboard() {
                       Drafts
                     </p>
                     {draftReports.slice(0, 2).map((report) => {
-                      const child = mockChildren.find(c => c.id === report.child_id);
+                      const child = myStudents.find(c => c.id === report.child_id);
                       return (
                         <div key={report.id} className="flex items-center gap-3 rounded-lg border p-3">
                           <Avatar className="h-10 w-10">
@@ -231,7 +242,6 @@ export default function TeacherDashboard() {
           </Card>
         </div>
 
-        {/* My Students */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>

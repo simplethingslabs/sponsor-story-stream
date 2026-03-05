@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TeacherLayout } from '@/components/layouts/TeacherLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,10 +17,11 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
+  Loader2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { mockChildren } from '@/data/mockData';
+import { useChildren } from '@/hooks/useApi';
 import { useToast } from '@/hooks/use-toast';
 
 type AttendanceStatus = 'present' | 'absent' | 'late' | 'unmarked';
@@ -33,18 +34,26 @@ interface StudentAttendance {
 
 export default function AttendanceMarking() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [attendance, setAttendance] = useState<StudentAttendance[]>(
-    mockChildren.filter(c => c.status === 'active').map(child => ({
-      childId: child.id,
-      status: 'unmarked',
-      notes: '',
-    }))
-  );
+  const [attendance, setAttendance] = useState<StudentAttendance[]>([]);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
-  const students = mockChildren.filter(c => c.status === 'active');
-  
+  const { data: childrenData, isLoading } = useChildren({ status: 'active' });
+  const students = childrenData?.data || [];
+
+  // Initialize attendance records when students load
+  useEffect(() => {
+    if (students.length > 0 && attendance.length === 0) {
+      setAttendance(
+        students.map(child => ({
+          childId: child.id,
+          status: 'unmarked' as AttendanceStatus,
+          notes: '',
+        }))
+      );
+    }
+  }, [students]);
+
   const stats = {
     total: students.length,
     present: attendance.filter(a => a.status === 'present').length,
@@ -67,13 +76,13 @@ export default function AttendanceMarking() {
 
   const markAllPresent = () => {
     setAttendance(prev => 
-      prev.map(a => ({ ...a, status: 'present' }))
+      prev.map(a => ({ ...a, status: 'present' as AttendanceStatus }))
     );
   };
 
   const handleSave = async () => {
     setSaving(true);
-    // Simulate API call
+    // No backend endpoint yet — simulate save
     await new Promise(resolve => setTimeout(resolve, 1000));
     setSaving(false);
     toast({
@@ -95,10 +104,19 @@ export default function AttendanceMarking() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <TeacherLayout>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </TeacherLayout>
+    );
+  }
+
   return (
     <TeacherLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Attendance</h1>
@@ -127,7 +145,6 @@ export default function AttendanceMarking() {
           </div>
         </div>
 
-        {/* Stats */}
         <div className="grid gap-4 grid-cols-2 md:grid-cols-5">
           <Card>
             <CardContent className="p-4 text-center">
@@ -166,7 +183,6 @@ export default function AttendanceMarking() {
           </Card>
         </div>
 
-        {/* Attendance List */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>

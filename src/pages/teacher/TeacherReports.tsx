@@ -15,16 +15,24 @@ import {
   Edit,
   Eye,
   Send,
+  Loader2,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { mockChildren, mockProgressReports } from '@/data/mockData';
+import { useChildren, useReports } from '@/hooks/useApi';
 import { format } from 'date-fns';
+import type { ProgressReport } from '@/types';
 
 export default function TeacherReports() {
   const [yearFilter, setYearFilter] = useState<string>('2026');
   const [quarterFilter, setQuarterFilter] = useState<string>('all');
 
-  const reports = mockProgressReports.filter(r => {
+  const { data: childrenData, isLoading: childrenLoading } = useChildren();
+  const { data: reportsData, isLoading: reportsLoading } = useReports();
+
+  const allChildren = childrenData?.data || [];
+  const allReports = reportsData?.data || [];
+
+  const reports = allReports.filter(r => {
     if (yearFilter !== 'all' && r.year.toString() !== yearFilter) return false;
     if (quarterFilter !== 'all' && r.quarter !== quarterFilter) return false;
     return true;
@@ -34,6 +42,8 @@ export default function TeacherReports() {
   const pendingReports = reports.filter(r => r.status === 'pending_review');
   const needsRevisionReports = reports.filter(r => r.status === 'needs_revision');
   const approvedReports = reports.filter(r => r.status === 'approved' || r.status === 'published');
+
+  const isLoading = childrenLoading || reportsLoading;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -52,8 +62,8 @@ export default function TeacherReports() {
     }
   };
 
-  const ReportCard = ({ report }: { report: typeof mockProgressReports[0] }) => {
-    const child = mockChildren.find(c => c.id === report.child_id);
+  const ReportCard = ({ report }: { report: ProgressReport }) => {
+    const child = allChildren.find(c => c.id === report.child_id);
     
     return (
       <Card className={report.status === 'needs_revision' ? 'border-destructive/50' : ''}>
@@ -124,10 +134,19 @@ export default function TeacherReports() {
     );
   };
 
+  if (isLoading) {
+    return (
+      <TeacherLayout>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </TeacherLayout>
+    );
+  }
+
   return (
     <TeacherLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Progress Reports</h1>
@@ -143,7 +162,6 @@ export default function TeacherReports() {
           </Link>
         </div>
 
-        {/* Filters */}
         <div className="flex gap-4">
           <Select value={yearFilter} onValueChange={setYearFilter}>
             <SelectTrigger className="w-32">
@@ -170,7 +188,6 @@ export default function TeacherReports() {
           </Select>
         </div>
 
-        {/* Tabs */}
         <Tabs defaultValue="action" className="space-y-4">
           <TabsList>
             <TabsTrigger value="action" className="gap-2">
