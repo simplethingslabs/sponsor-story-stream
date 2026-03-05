@@ -1,5 +1,5 @@
 import { TeacherLayout } from '@/components/layouts/TeacherLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -8,28 +8,43 @@ import {
   Search, 
   FileText, 
   Camera,
-  Calendar,
   GraduationCap,
+  Loader2,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { mockChildren, mockProgressReports, mockSponsorships } from '@/data/mockData';
+import { useChildren, useReports, useSponsorships } from '@/hooks/useApi';
 import { format, differenceInYears } from 'date-fns';
 
 export default function TeacherStudents() {
   const [searchQuery, setSearchQuery] = useState('');
   
-  const students = mockChildren.filter(c => c.status === 'active');
+  const { data: childrenData, isLoading: childrenLoading } = useChildren({ status: 'active' });
+  const { data: reportsData, isLoading: reportsLoading } = useReports();
+  const { data: sponsorshipsData } = useSponsorships();
+
+  const students = childrenData?.data || [];
+  const allReports = reportsData?.data || [];
+  const allSponsorships = sponsorshipsData?.data || [];
   
   const filteredStudents = students.filter(student =>
     `${student.first_name} ${student.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
     student.grade.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  if (childrenLoading) {
+    return (
+      <TeacherLayout>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </TeacherLayout>
+    );
+  }
+
   return (
     <TeacherLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div>
           <h1 className="text-3xl font-bold text-foreground">My Students</h1>
           <p className="text-muted-foreground">
@@ -37,7 +52,6 @@ export default function TeacherStudents() {
           </p>
         </div>
 
-        {/* Search */}
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -48,12 +62,11 @@ export default function TeacherStudents() {
           />
         </div>
 
-        {/* Students Grid */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredStudents.map((child) => {
             const age = differenceInYears(new Date(), new Date(child.date_of_birth));
-            const reports = mockProgressReports.filter(r => r.child_id === child.id);
-            const hasSponsorship = mockSponsorships.some(s => s.child_id === child.id && s.status === 'active');
+            const reports = allReports.filter(r => r.child_id === child.id);
+            const hasSponsorship = allSponsorships.some(s => s.child_id === child.id && s.status === 'active');
             const latestReport = reports.sort((a, b) => 
               new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
             )[0];

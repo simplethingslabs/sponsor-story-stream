@@ -23,11 +23,12 @@ import {
   Building,
   Smartphone,
   Copy,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useReactToPrint } from 'react-to-print';
 import { useAuth } from '@/contexts/AuthContext';
-import { getPaymentsBySponsor, mockChildren } from '@/data/mockData';
+import { usePayments, useChildren } from '@/hooks/useApi';
 import { PaymentReceipt } from '@/components/payments/PaymentReceipt';
 import type { Payment, PaymentStatus } from '@/types';
 
@@ -45,7 +46,6 @@ const statusColors: Record<PaymentStatus, string> = {
   cancelled: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
 };
 
-// Mock payment instructions - in production, these would come from settings/config
 const paymentInstructions = {
   bankName: 'State Bank of India',
   accountName: 'SponsorConnect Foundation',
@@ -65,10 +65,14 @@ export default function SponsorPayments() {
     contentRef: receiptRef,
   });
 
-  // Get payments for current sponsor
-  const payments = user ? getPaymentsBySponsor(user.id) : [];
+  const { data: paymentsData, isLoading: paymentsLoading } = usePayments(
+    user ? { sponsor_id: user.id } : undefined
+  );
+  const { data: childrenData, isLoading: childrenLoading } = useChildren();
+
+  const payments = paymentsData?.data || [];
+  const allChildren = childrenData?.data || [];
   
-  // Find next due payment
   const nextDuePayment = payments
     .filter(p => p.status === 'pending' || p.status === 'overdue')
     .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())[0];
@@ -91,16 +95,26 @@ export default function SponsorPayments() {
     setReceiptDialogOpen(true);
   };
 
+  const isLoading = paymentsLoading || childrenLoading;
+
+  if (isLoading) {
+    return (
+      <SponsorLayout>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </SponsorLayout>
+    );
+  }
+
   return (
     <SponsorLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div>
           <h1 className="text-2xl font-bold text-foreground">My Payments</h1>
           <p className="text-muted-foreground">View payment history and download tax receipts</p>
         </div>
 
-        {/* Next Due Payment */}
         {nextDuePayment && (
           <Card className={nextDuePayment.status === 'overdue' ? 'border-destructive' : 'border-primary'}>
             <CardHeader>
@@ -131,7 +145,7 @@ export default function SponsorPayments() {
                   </p>
                   {nextDuePayment.child_id && (
                     <p className="text-sm text-muted-foreground mt-1">
-                      For: {mockChildren.find(c => c.id === nextDuePayment.child_id)?.first_name || 'Sponsored Child'}
+                      For: {allChildren.find(c => c.id === nextDuePayment.child_id)?.first_name || 'Sponsored Child'}
                     </p>
                   )}
                 </div>
@@ -145,7 +159,6 @@ export default function SponsorPayments() {
         )}
 
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* Payment History */}
           <Card className="lg:col-span-1">
             <CardHeader>
               <CardTitle>Payment History</CardTitle>
@@ -160,7 +173,7 @@ export default function SponsorPayments() {
                 <div className="space-y-4">
                   {payments.map((payment) => {
                     const StatusIcon = statusIcons[payment.status];
-                    const child = mockChildren.find(c => c.id === payment.child_id);
+                    const child = allChildren.find(c => c.id === payment.child_id);
                     
                     return (
                       <div 
@@ -218,14 +231,12 @@ export default function SponsorPayments() {
             </CardContent>
           </Card>
 
-          {/* Payment Instructions */}
           <Card className="lg:col-span-1">
             <CardHeader>
               <CardTitle>How to Pay</CardTitle>
               <CardDescription>Choose your preferred payment method</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* UPI */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <Smartphone className="h-5 w-5 text-primary" />
@@ -250,7 +261,6 @@ export default function SponsorPayments() {
 
               <Separator />
 
-              {/* Bank Transfer */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <Building className="h-5 w-5 text-primary" />
@@ -305,7 +315,6 @@ export default function SponsorPayments() {
 
               <Separator />
 
-              {/* Cheque */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <FileText className="h-5 w-5 text-primary" />
@@ -333,7 +342,6 @@ export default function SponsorPayments() {
           </Card>
         </div>
 
-        {/* Receipt Dialog */}
         <Dialog open={receiptDialogOpen} onOpenChange={setReceiptDialogOpen}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -348,7 +356,7 @@ export default function SponsorPayments() {
                   <PaymentReceipt 
                     payment={selectedPayment}
                     sponsor={user}
-                    child={mockChildren.find(c => c.id === selectedPayment.child_id)}
+                    child={allChildren.find(c => c.id === selectedPayment.child_id)}
                   />
                 </div>
                 <DialogFooter>

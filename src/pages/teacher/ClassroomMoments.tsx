@@ -23,9 +23,10 @@ import {
   Eye,
   Trash2,
   Filter,
+  Loader2,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { mockChildren, mockEvents } from '@/data/mockData';
+import { useChildren, useEvents } from '@/hooks/useApi';
 import { useToast } from '@/hooks/use-toast';
 
 interface ClassroomMoment {
@@ -39,7 +40,7 @@ interface ClassroomMoment {
   status: 'pending' | 'approved';
 }
 
-// Mock moments data
+// Mock moments data (no backend endpoint for moments yet)
 const mockMoments: ClassroomMoment[] = [
   {
     id: 'moment-1',
@@ -83,7 +84,11 @@ export default function ClassroomMoments() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'approved' | 'pending'>('all');
   const { toast } = useToast();
 
-  const students = mockChildren.filter(c => c.status === 'active');
+  const { data: childrenData, isLoading: childrenLoading } = useChildren({ status: 'active' });
+  const { data: eventsData, isLoading: eventsLoading } = useEvents();
+
+  const students = childrenData?.data || [];
+  const events = eventsData?.data || [];
 
   const filteredMoments = moments.filter(m => 
     filterStatus === 'all' || m.status === filterStatus
@@ -117,7 +122,7 @@ export default function ClassroomMoments() {
     }
 
     setUploading(true);
-    // Simulate upload
+    // No backend endpoint yet — simulate upload
     await new Promise(resolve => setTimeout(resolve, 1500));
 
     const newMoment: ClassroomMoment = {
@@ -158,10 +163,21 @@ export default function ClassroomMoments() {
     });
   };
 
+  const isLoading = childrenLoading || eventsLoading;
+
+  if (isLoading) {
+    return (
+      <TeacherLayout>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </TeacherLayout>
+    );
+  }
+
   return (
     <TeacherLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Classroom Moments</h1>
@@ -186,7 +202,6 @@ export default function ClassroomMoments() {
               </DialogHeader>
               
               <div className="space-y-6 py-4">
-                {/* File Upload */}
                 <div className="space-y-2">
                   <Label>Photo/Video</Label>
                   {!previewUrl ? (
@@ -237,7 +252,6 @@ export default function ClassroomMoments() {
                   )}
                 </div>
 
-                {/* Caption */}
                 <div className="space-y-2">
                   <Label htmlFor="caption">Caption *</Label>
                   <Textarea
@@ -249,7 +263,6 @@ export default function ClassroomMoments() {
                   />
                 </div>
 
-                {/* Tag Students */}
                 <div className="space-y-2">
                   <Label>Tag Students</Label>
                   <p className="text-xs text-muted-foreground mb-2">
@@ -282,7 +295,6 @@ export default function ClassroomMoments() {
                   </div>
                 </div>
 
-                {/* Link to Event */}
                 <div className="space-y-2">
                   <Label>Link to Event (Optional)</Label>
                   <Select value={selectedEvent} onValueChange={setSelectedEvent}>
@@ -291,7 +303,7 @@ export default function ClassroomMoments() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">No event</SelectItem>
-                      {mockEvents.map((event) => (
+                      {events.map((event) => (
                         <SelectItem key={event.id} value={event.id}>
                           {event.title} ({format(new Date(event.event_date), 'MMM d, yyyy')})
                         </SelectItem>
@@ -311,7 +323,7 @@ export default function ClassroomMoments() {
                 <Button onClick={handleUpload} disabled={uploading || !selectedFile}>
                   {uploading ? (
                     <>
-                      <span className="animate-spin mr-2">⏳</span>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Uploading...
                     </>
                   ) : (
@@ -326,7 +338,6 @@ export default function ClassroomMoments() {
           </Dialog>
         </div>
 
-        {/* Stats */}
         <div className="grid gap-4 grid-cols-3">
           <Card>
             <CardContent className="p-4 text-center">
@@ -355,7 +366,6 @@ export default function ClassroomMoments() {
           </Card>
         </div>
 
-        {/* Filter */}
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <Select value={filterStatus} onValueChange={(v: any) => setFilterStatus(v)}>
@@ -370,11 +380,10 @@ export default function ClassroomMoments() {
           </Select>
         </div>
 
-        {/* Moments Grid */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredMoments.map((moment) => {
             const tagged = students.filter(s => moment.taggedChildren.includes(s.id));
-            const event = mockEvents.find(e => e.id === moment.event);
+            const event = events.find(e => e.id === moment.event);
             
             return (
               <Card key={moment.id} className="overflow-hidden">
@@ -449,8 +458,8 @@ export default function ClassroomMoments() {
                     </span>
                     <Button
                       variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
                       onClick={() => deleteMoment(moment.id)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -466,14 +475,10 @@ export default function ClassroomMoments() {
           <Card>
             <CardContent className="py-12 text-center">
               <Camera className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <p className="text-lg font-medium">No moments yet</p>
-              <p className="text-muted-foreground mb-4">
-                Start capturing special classroom moments to share with sponsors
+              <p className="text-lg font-medium">No moments found</p>
+              <p className="text-muted-foreground">
+                Upload your first classroom moment to get started
               </p>
-              <Button onClick={() => setUploadDialogOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Upload First Moment
-              </Button>
             </CardContent>
           </Card>
         )}
