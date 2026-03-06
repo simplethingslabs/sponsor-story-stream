@@ -21,8 +21,9 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useChildren } from '@/hooks/useApi';
+import { useChildren, useAttendance, useSaveAttendance } from '@/hooks/useApi';
 import { useToast } from '@/hooks/use-toast';
+import { api } from '@/lib/api';
 
 type AttendanceStatus = 'present' | 'absent' | 'late' | 'unmarked';
 
