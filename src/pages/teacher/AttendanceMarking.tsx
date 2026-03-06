@@ -133,7 +133,7 @@ export default function AttendanceMarking() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || attendanceLoading) {
     return (
       <TeacherLayout>
         <div className="flex items-center justify-center py-20">
