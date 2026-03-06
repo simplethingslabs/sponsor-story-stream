@@ -13,6 +13,7 @@ import auditRoutes from './audit';
 import uploadRoutes from './upload';
 import trashRoutes from './trash';
 import paymentsRoutes from './payments';
+import attendanceRoutes from './attendance';
 
 const router = Router();
 
@@ -30,6 +31,7 @@ router.use('/audit', auditRoutes);
 router.use('/upload', uploadRoutes);
 router.use('/trash', trashRoutes);
 router.use('/payments', paymentsRoutes);
+router.use('/attendance', attendanceRoutes);
 
 // Health check
 router.get('/health', (_req, res) => {

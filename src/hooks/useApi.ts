@@ -37,6 +37,7 @@ export const queryKeys = {
   payments: ['payments'] as const,
   payment: (id: string) => ['payments', id] as const,
   paymentStats: ['payment-stats'] as const,
+  attendance: (date: string) => ['attendance', date] as const,
 };
 
 // ============ Children Hooks ============
@@ -789,6 +790,33 @@ export function useDeletePayment() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.payments });
       queryClient.invalidateQueries({ queryKey: queryKeys.paymentStats });
+    },
+  });
+}
+
+// ============ Attendance Hooks ============
+export function useAttendance(date: string) {
+  return useQuery({
+    queryKey: queryKeys.attendance(date),
+    queryFn: async () => {
+      const response = await api.get<{ data: any[] }>(`/attendance?date=${date}`);
+      if (response.error) throw new Error(response.error);
+      return response.data!;
+    },
+    enabled: !!date,
+  });
+}
+
+export function useSaveAttendance() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { date: string; records: { child_id: string; status: string; notes?: string }[] }) => {
+      const response = await api.post<any>('/attendance', payload);
+      if (response.error) throw new Error(response.error);
+      return response.data!;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.attendance(variables.date) });
     },
   });
 }
