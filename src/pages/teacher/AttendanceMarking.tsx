@@ -23,7 +23,6 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useChildren, useAttendance, useSaveAttendance } from '@/hooks/useApi';
 import { useToast } from '@/hooks/use-toast';
-import { api } from '@/lib/api';
 
 type AttendanceStatus = 'present' | 'absent' | 'late' | 'unmarked';
 
