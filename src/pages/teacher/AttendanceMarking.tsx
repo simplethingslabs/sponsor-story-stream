@@ -39,21 +39,28 @@ export default function AttendanceMarking() {
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
+  const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const { data: childrenData, isLoading } = useChildren({ status: 'active' });
+  const { data: attendanceData, isLoading: attendanceLoading } = useAttendance(dateStr);
+  const saveAttendanceMutation = useSaveAttendance();
   const students = childrenData?.data || [];
 
-  // Initialize attendance records when students load
+  // Initialize/update attendance records when students or saved data changes
   useEffect(() => {
-    if (students.length > 0 && attendance.length === 0) {
+    if (students.length > 0) {
+      const savedRecords = attendanceData?.data || [];
       setAttendance(
-        students.map(child => ({
-          childId: child.id,
-          status: 'unmarked' as AttendanceStatus,
-          notes: '',
-        }))
+        students.map(child => {
+          const saved = savedRecords.find((r: any) => r.child_id === child.id);
+          return {
+            childId: child.id,
+            status: saved ? (saved.status as AttendanceStatus) : 'unmarked',
+            notes: saved?.notes || '',
+          };
+        })
       );
     }
-  }, [students]);
+  }, [students, attendanceData]);
 
   const stats = {
     total: students.length,
@@ -82,14 +89,35 @@ export default function AttendanceMarking() {
   };
 
   const handleSave = async () => {
+    const markedRecords = attendance.filter(a => a.status !== 'unmarked');
+    if (markedRecords.length === 0) {
+      toast({ title: 'Nothing to save', description: 'Please mark attendance for at least one student.', variant: 'destructive' });
+      return;
+    }
+
     setSaving(true);
-    // No backend endpoint yet — simulate save
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setSaving(false);
-    toast({
-      title: 'Attendance Saved',
-      description: `Attendance for ${format(selectedDate, 'MMMM d, yyyy')} has been saved.`,
-    });
+    try {
+      await saveAttendanceMutation.mutateAsync({
+        date: dateStr,
+        records: markedRecords.map(a => ({
+          child_id: a.childId,
+          status: a.status,
+          notes: a.notes,
+        })),
+      });
+      toast({
+        title: 'Attendance Saved',
+        description: `Attendance for ${format(selectedDate, 'MMMM d, yyyy')} has been saved.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Save Failed',
+        description: error.message || 'Failed to save attendance.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const getStatusIcon = (status: AttendanceStatus) => {
