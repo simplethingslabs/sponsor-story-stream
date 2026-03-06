@@ -13,6 +13,7 @@ import auditRoutes from './audit';
 import uploadRoutes from './upload';
 import trashRoutes from './trash';
 import paymentsRoutes from './payments';
+import attendanceRoutes from './attendance';
 
 const router = Router();
 
