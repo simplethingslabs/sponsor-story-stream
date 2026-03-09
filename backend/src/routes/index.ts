@@ -33,6 +33,7 @@ router.use('/upload', uploadRoutes);
 router.use('/trash', trashRoutes);
 router.use('/payments', paymentsRoutes);
 router.use('/attendance', attendanceRoutes);
+router.use('/moments', momentsRoutes);
 
 // Health check
 router.get('/health', (_req, res) => {
