@@ -821,3 +821,50 @@ export function useSaveAttendance() {
     },
   });
 }
+
+// ============ Moments Hooks ============
+export function useMoments(params?: Record<string, any>) {
+  return useQuery({
+    queryKey: [...queryKeys.moments, params],
+    queryFn: async () => {
+      const queryString = params ? `?${new URLSearchParams(params).toString()}` : '';
+      const response = await api.get<{ data: any[] }>(`/moments${queryString}`);
+      if (response.error) throw new Error(response.error);
+      return response.data!;
+    },
+  });
+}
+
+export function useCreateMoment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      type: 'image' | 'video';
+      url: string;
+      caption: string;
+      event_id?: string;
+      tagged_children?: string[];
+    }) => {
+      const response = await api.post<any>('/moments', data);
+      if (response.error) throw new Error(response.error);
+      return response.data!;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.moments });
+    },
+  });
+}
+
+export function useDeleteMoment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.delete(`/moments/${id}`);
+      if (response.error) throw new Error(response.error);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.moments });
+    },
+  });
+}
