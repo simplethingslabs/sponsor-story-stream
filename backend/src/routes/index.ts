@@ -14,6 +14,7 @@ import uploadRoutes from './upload';
 import trashRoutes from './trash';
 import paymentsRoutes from './payments';
 import attendanceRoutes from './attendance';
+import momentsRoutes from './moments';
 
 const router = Router();
 
