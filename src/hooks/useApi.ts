@@ -38,6 +38,7 @@ export const queryKeys = {
   payment: (id: string) => ['payments', id] as const,
   paymentStats: ['payment-stats'] as const,
   attendance: (date: string) => ['attendance', date] as const,
+  moments: ['moments'] as const,
 };
 
 // ============ Children Hooks ============
