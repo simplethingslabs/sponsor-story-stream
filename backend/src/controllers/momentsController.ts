@@ -69,7 +69,7 @@ export async function createMoment(req: AuthenticatedRequest, res: Response): Pr
       [teacherId, type, url, caption, event_id || null]
     );
 
-    const moment = momentResult.rows[0];
+    const moment = momentResult.rows[0] as { id: string; [key: string]: any };
 
     // Insert tags
     if (tagged_children && tagged_children.length > 0) {
