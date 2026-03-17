@@ -43,6 +43,7 @@ const navigation = [
   { name: 'Newsletters', href: '/dashboard/newsletters', icon: Newspaper },
   { name: 'Events', href: '/dashboard/events', icon: Calendar },
   { name: 'Sponsors', href: '/dashboard/sponsors', icon: UserPlus },
+  { name: 'Teachers', href: '/dashboard/teachers', icon: GraduationCap, adminOnly: true },
 ];
 
 const financialNavigation = [

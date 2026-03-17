@@ -101,10 +101,13 @@ const App = () => (
               <Route path="/dashboard/events" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><EventsList /></ProtectedRoute>} />
               <Route path="/dashboard/events/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><AddEvent /></ProtectedRoute>} />
               <Route path="/dashboard/sponsors" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SponsorsList /></ProtectedRoute>} />
+              <Route path="/dashboard/sponsors/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><AddSponsor /></ProtectedRoute>} />
               <Route path="/dashboard/sponsors/invite" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><InviteSponsor /></ProtectedRoute>} />
               <Route path="/dashboard/sponsors/pending" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><PendingApprovals /></ProtectedRoute>} />
               <Route path="/dashboard/sponsors/:id" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SponsorDetail /></ProtectedRoute>} />
               <Route path="/dashboard/sponsors/:id/manage" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><ManageSponsorships /></ProtectedRoute>} />
+              <Route path="/dashboard/teachers" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><TeachersList /></ProtectedRoute>} />
+              <Route path="/dashboard/teachers/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><AddTeacher /></ProtectedRoute>} />
               <Route path="/dashboard/audit-logs" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><AuditLogs /></ProtectedRoute>} />
               <Route path="/dashboard/trash" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><Trash /></ProtectedRoute>} />
               <Route path="/dashboard/financials" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><FinancialDashboard /></ProtectedRoute>} />
