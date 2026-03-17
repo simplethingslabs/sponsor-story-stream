@@ -137,7 +137,7 @@ function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
           </>
         )}
 
-        {/* Teacher Section */}
+        {/* Teacher Portal Section */}
         <>
           <div className="my-4 border-t border-border" />
           <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
