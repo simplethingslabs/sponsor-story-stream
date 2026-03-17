@@ -869,3 +869,34 @@ export function useDeleteMoment() {
     },
   });
 }
+
+// ============ Teachers Hooks ============
+export function useTeachers() {
+  return useQuery({
+    queryKey: queryKeys.teachers,
+    queryFn: async () => {
+      const response = await api.get<{ data: User[]; total: number }>('/auth/users?role=teacher');
+      if (response.error) throw new Error(response.error);
+      return response.data!;
+    },
+  });
+}
+
+// ============ Admin Create User Hook ============
+export function useCreateUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { email: string; password: string; full_name: string; phone?: string; role: 'teacher' | 'sponsor' }) => {
+      const response = await api.post<{ message: string; user: User }>('/auth/create-user', data);
+      if (response.error) throw new Error(response.error);
+      return response.data!;
+    },
+    onSuccess: (_, variables) => {
+      if (variables.role === 'teacher') {
+        queryClient.invalidateQueries({ queryKey: queryKeys.teachers });
+      } else {
+        queryClient.invalidateQueries({ queryKey: queryKeys.sponsors });
+      }
+    },
+  });
+}
