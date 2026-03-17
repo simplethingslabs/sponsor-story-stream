@@ -4,7 +4,7 @@ import jwt, { type SignOptions } from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../config/database';
 import { getResendClient, emailConfig, verifyResendConfig } from '../config/resend';
-import { LoginInput, RegisterInput, ForgotPasswordInput, ResetPasswordInput, RefreshTokenInput } from '../schemas/auth';
+import { LoginInput, RegisterInput, ForgotPasswordInput, ResetPasswordInput, RefreshTokenInput, CreateUserInput } from '../schemas/auth';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
@@ -426,6 +426,68 @@ export async function updateCurrentUser(req: Request, res: Response, next: NextF
     }
     
     res.json(result.rows[0]);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Admin: Create user (teacher or sponsor)
+export async function createUser(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { email, password, full_name, phone, role } = req.body as CreateUserInput;
+
+    // Check if email already exists
+    const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: 'Email already registered' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const userId = uuidv4();
+
+    await pool.query(
+      `INSERT INTO users (id, email, password_hash, full_name, phone)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [userId, email, passwordHash, full_name, phone || null]
+    );
+
+    await pool.query(
+      `INSERT INTO user_roles (user_id, role) VALUES ($1, $2)`,
+      [userId, role]
+    );
+
+    const result = await pool.query(
+      `SELECT id, email, full_name, phone, created_at FROM users WHERE id = $1`,
+      [userId]
+    );
+
+    res.status(201).json({
+      message: `${role.charAt(0).toUpperCase() + role.slice(1)} account created successfully`,
+      user: { ...result.rows[0], roles: [role] },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Admin: List users by role
+export async function listUsersByRole(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { role } = req.query;
+    if (!role || !['teacher', 'sponsor'].includes(role as string)) {
+      return res.status(400).json({ error: 'Invalid role parameter' });
+    }
+
+    const result = await pool.query(
+      `SELECT u.id, u.email, u.full_name, u.phone, u.avatar_url, u.created_at, u.updated_at
+       FROM users u
+       JOIN user_roles ur ON u.id = ur.user_id
+       WHERE ur.role = $1 AND u.deleted_at IS NULL
+       ORDER BY u.created_at DESC`,
+      [role]
+    );
+
+    res.json({ data: result.rows, total: result.rows.length });
   } catch (error) {
     next(error);
   }

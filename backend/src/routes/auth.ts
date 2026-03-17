@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import * as authController from '../controllers/authController';
 import { authenticate } from '../middleware/auth';
+import { requireAdmin } from '../middleware/authorize';
 import { validateBody } from '../middleware/validate';
-import { loginSchema, registerSchema, forgotPasswordSchema, resetPasswordSchema, refreshTokenSchema } from '../schemas/auth';
+import { loginSchema, registerSchema, forgotPasswordSchema, resetPasswordSchema, refreshTokenSchema, createUserSchema } from '../schemas/auth';
 
 const router = Router();
 
@@ -15,5 +16,7 @@ router.post('/refresh', validateBody(refreshTokenSchema), authController.refresh
 router.post('/logout', authController.logout);
 router.get('/me', authenticate, authController.getCurrentUser);
 router.put('/me', authenticate, authController.updateCurrentUser);
+router.post('/create-user', authenticate, requireAdmin, validateBody(createUserSchema), authController.createUser);
+router.get('/users', authenticate, requireAdmin, authController.listUsersByRole);
 
 export default router;

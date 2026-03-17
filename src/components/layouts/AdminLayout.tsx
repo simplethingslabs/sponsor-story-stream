@@ -43,6 +43,7 @@ const navigation = [
   { name: 'Newsletters', href: '/dashboard/newsletters', icon: Newspaper },
   { name: 'Events', href: '/dashboard/events', icon: Calendar },
   { name: 'Sponsors', href: '/dashboard/sponsors', icon: UserPlus },
+  { name: 'Teachers', href: '/dashboard/teachers', icon: GraduationCap, adminOnly: true },
 ];
 
 const financialNavigation = [
@@ -136,7 +137,7 @@ function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
           </>
         )}
 
-        {/* Teacher Section */}
+        {/* Teacher Portal Section */}
         <>
           <div className="my-4 border-t border-border" />
           <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
