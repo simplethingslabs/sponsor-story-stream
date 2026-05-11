@@ -2,62 +2,6 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { api } from '@/lib/api';
 import type { UserWithRoles, LoginCredentials, RegisterData, AuthState, UserRole } from '@/types';
 
-// Demo mode users for testing when backend is unavailable
-const DEMO_USERS: Record<string, { password: string; user: UserWithRoles }> = {
-  'sponsor@example.com': {
-    password: 'sponsor123',
-    user: {
-      id: 'sponsor-1',
-      email: 'sponsor@example.com',
-      full_name: 'Sarah Johnson',
-      phone: '+1234567890',
-      avatar_url: undefined,
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
-      roles: ['sponsor'],
-    },
-  },
-  'admin@school.org': {
-    password: 'admin123',
-    user: {
-      id: 'admin-1',
-      email: 'admin@school.org',
-      full_name: 'Admin User',
-      phone: '+1234567890',
-      avatar_url: undefined,
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
-      roles: ['admin'],
-    },
-  },
-  'teacher@school.org': {
-    password: 'teacher123',
-    user: {
-      id: 'teacher-1',
-      email: 'teacher@school.org',
-      full_name: 'Teacher User',
-      phone: '+1234567890',
-      avatar_url: undefined,
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
-      roles: ['teacher'],
-    },
-  },
-  'anantvalleypublicschool@gmail.com': {
-    password: 'admin123',
-    user: {
-      id: 'admin-2',
-      email: 'anantvalleypublicschool@gmail.com',
-      full_name: 'Anant Valley Admin',
-      phone: '+1234567890',
-      avatar_url: undefined,
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
-      roles: ['admin'],
-    },
-  },
-};
-
 interface AuthContextType extends AuthState {
   login: (credentials: LoginCredentials) => Promise<{ success: boolean; error?: string }>;
   register: (data: RegisterData) => Promise<{ success: boolean; error?: string }>;
