@@ -1,292 +1,123 @@
+# Go-Live Plan: Sponsor Portal
 
-
-# Deployment Guide: Backend to Render + Database Setup
-
-## Overview
-
-This guide walks you through deploying your Express.js backend to Render with a PostgreSQL database, then connecting your Lovable frontend to the live API.
+## Goal
+Get the app fully production-ready and live on a subdomain of your existing website (e.g. `sponsors.yourschool.com`), with no mock data and all integrations connected.
 
 ---
 
-## Part 1: Export Backend Code to GitHub
+## 1. Backend (Render) — Verify & Complete
 
-### Step 1.1: Connect Lovable to GitHub (if not already)
+### 1.1 Confirm backend is healthy
+- Hit `https://sponsor-portal-api-a49s.onrender.com/health` and confirm:
+  - `database: connected`
+  - `cloudinary: configured`
+  - `resend: configured`
 
-1. Click the **project name** in the top-left corner of Lovable
-2. Click **Settings**
-3. Go to the **GitHub** tab under "Connectors"
-4. Click **Connect to GitHub**
-5. Authorize Lovable to access your GitHub account
-6. Click **Create Repository** - this creates a new repo with all your code including the `backend/` folder
+### 1.2 Add missing environment variables on Render
+Currently missing (per earlier discussion):
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+- `RESEND_API_KEY`
+- `FROM_EMAIL` (e.g. `noreply@yourschool.com`)
+- `FROM_NAME` (e.g. `Anant Valley Sponsor Portal`)
+- `FRONTEND_URL` → must be set to the final subdomain (e.g. `https://sponsors.yourschool.com`)
 
-### Step 1.2: Verify Backend Code is in GitHub
+Without Cloudinary: photo/document/newsletter uploads will fail.
+Without Resend: invitations, password resets, welcome emails will not send.
 
-1. Go to your GitHub repository (link shown after connecting)
-2. Navigate to the `backend/` folder
-3. Confirm you see these files:
-   - `backend/src/` (all controllers, routes, etc.)
-   - `backend/migrations/` (001-004 SQL files)
-   - `backend/package.json`
-   - `backend/tsconfig.json`
+### 1.3 Run any pending migrations
+Verify all 6 migrations (001–006) have been applied to the Render Postgres DB.
 
----
-
-## Part 2: Create PostgreSQL Database on Render
-
-### Step 2.1: Create Render Account
-
-1. Go to **https://render.com**
-2. Click **Get Started for Free**
-3. Sign up with GitHub (recommended for easy deployment)
-
-### Step 2.2: Create PostgreSQL Database
-
-1. From Render Dashboard, click **New +** button (top right)
-2. Select **PostgreSQL**
-3. Fill in the form:
-   - **Name**: `sponsor-portal-db`
-   - **Database**: `sponsor_portal`
-   - **User**: `sponsor_admin` (or leave default)
-   - **Region**: Choose closest to your users
-   - **PostgreSQL Version**: `15` or latest
-   - **Instance Type**: Select **Free** (for testing) or **Starter** ($7/month for production)
-4. Click **Create Database**
-5. Wait 1-2 minutes for provisioning
-
-### Step 2.3: Copy Database Connection String
-
-1. Once database is ready, click on it to open details
-2. Scroll to **Connections** section
-3. Copy the **External Database URL** - it looks like:
-   ```
-   postgresql://sponsor_admin:xxxxxxxx@dpg-xxxxx.oregon-postgres.render.com/sponsor_portal
-   ```
-4. **Save this URL** - you'll need it for migrations and backend deployment
+### 1.4 Render plan
+- Free tier sleeps after 15 min of inactivity (cold-start ~30s). For stakeholder demos and real users, upgrade the web service to **Starter ($7/mo)** to avoid cold starts.
+- Same for the database (Free tier expires after 90 days).
 
 ---
 
-## Part 3: Run Database Migrations
+## 2. Initial Data — Seed Real Accounts
 
-### Step 3.1: Install PostgreSQL Client (if needed)
+### 2.1 Create production admin
+- One real admin account for the school (replacing any demo `anantvalleypublicschool@gmail.com` placeholder if it doesn't exist yet).
+- Created via SQL on Render DB (bcrypt-hashed password).
 
-**On Mac:**
-```bash
-brew install postgresql
-```
+### 2.2 Create initial teachers and sponsors
+- Once admin can log in, use the new **Add Teacher** and **Add Sponsor** screens.
+- Alternative: bulk-seed via SQL if a list exists.
 
-**On Windows:**
-Download from https://www.postgresql.org/download/windows/
-
-**On Linux:**
-```bash
-sudo apt-get install postgresql-client
-```
-
-### Step 3.2: Run Migrations in Order
-
-Open your terminal and run each migration:
-
-```bash
-# Replace YOUR_DATABASE_URL with the External Database URL from Render
-
-# Migration 1: Initial schema (creates all tables)
-psql "YOUR_DATABASE_URL" -f backend/migrations/001_initial_schema.sql
-
-# Migration 2: User roles table
-psql "YOUR_DATABASE_URL" -f backend/migrations/002_user_roles_table.sql
-
-# Migration 3: Add missing columns
-psql "YOUR_DATABASE_URL" -f backend/migrations/003_add_missing_columns.sql
-
-# Migration 4: Payments table
-psql "YOUR_DATABASE_URL" -f backend/migrations/004_payments_table.sql
-```
-
-### Step 3.3: Verify Migrations Succeeded
-
-```bash
-# Connect to database
-psql "YOUR_DATABASE_URL"
-
-# List all tables (should see users, children, payments, etc.)
-\dt
-
-# Check for admin user
-SELECT id, email, full_name FROM users LIMIT 5;
-
-# Exit
-\q
-```
+### 2.3 Remove/verify demo data
+- Audit the DB for any leftover seed/demo rows (test children, fake payments).
+- Confirm `src/data/mockData.ts` is no longer imported anywhere in production code paths.
 
 ---
 
-## Part 4: Deploy Backend to Render
+## 3. Frontend — Subdomain Deployment
 
-### Step 4.1: Create Web Service
+You have two options. Pick one:
 
-1. From Render Dashboard, click **New +**
-2. Select **Web Service**
-3. Click **Connect a repository**
-4. Select your GitHub repository
-5. Click **Connect**
+### Option A — Use Lovable hosting on your subdomain (recommended, simplest)
+1. In Lovable: **Project Settings → Domains → Connect Domain** → enter `sponsors.yourschool.com`.
+2. Lovable shows DNS records to add at your existing registrar (GoDaddy or wherever the parent domain lives):
+   - `A` record: name `sponsors`, value `185.158.133.1`
+   - `TXT` record: `_lovable.sponsors` with verification value
+3. Wait for DNS propagation + automatic SSL provisioning.
+4. Set Lovable env var `VITE_API_URL` → `https://sponsor-portal-api-a49s.onrender.com/api`.
+5. Click **Publish → Update**.
 
-### Step 4.2: Configure Build Settings
+This keeps the parent site (`yourschool.com`) untouched — only the subdomain points to Lovable.
 
-Fill in the form:
+### Option B — Self-host the built frontend on your own server
+- Run `npm run build`, deploy `dist/` to your existing host under the subdomain.
+- Configure SPA fallback (rewrite all paths to `index.html`).
+- More work; only choose if there is a policy reason not to use Lovable hosting.
 
-| Setting | Value |
-|---------|-------|
-| **Name** | `sponsor-portal-api` |
-| **Region** | Same as your database |
-| **Branch** | `main` |
-| **Root Directory** | `backend` |
-| **Runtime** | `Node` |
-| **Build Command** | `npm install && npm run build` |
-| **Start Command** | `npm start` |
-| **Instance Type** | Free (or Starter for production) |
-
-### Step 4.3: Add Environment Variables
-
-Scroll to **Environment Variables** section and add:
-
-| Key | Value |
-|-----|-------|
-| `DATABASE_URL` | Your External Database URL from Part 2 |
-| `JWT_SECRET` | Generate a secure random string (32+ characters) |
-| `JWT_EXPIRES_IN` | `1h` |
-| `JWT_REFRESH_EXPIRES_IN` | `7d` |
-| `NODE_ENV` | `production` |
-| `FRONTEND_URL` | `https://sponsor-story-stream.lovable.app` |
-| `PORT` | `3001` |
-
-**Optional (for full functionality):**
-
-| Key | Value |
-|-----|-------|
-| `CLOUDINARY_CLOUD_NAME` | Your Cloudinary cloud name |
-| `CLOUDINARY_API_KEY` | Your Cloudinary API key |
-| `CLOUDINARY_API_SECRET` | Your Cloudinary API secret |
-| `RESEND_API_KEY` | Your Resend API key |
-| `FROM_EMAIL` | `noreply@yourdomain.com` |
-
-**Tip**: Generate a secure JWT_SECRET using:
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
-
-### Step 4.4: Deploy
-
-1. Click **Create Web Service**
-2. Wait 3-5 minutes for the build and deploy
-3. Watch the logs for any errors
-
-### Step 4.5: Verify Backend is Running
-
-1. Once deployed, Render shows your service URL (e.g., `https://sponsor-portal-api.onrender.com`)
-2. Open in browser: `https://sponsor-portal-api.onrender.com/api/health`
-3. You should see: `{"status":"ok","timestamp":"..."}`
+### 3.2 CORS
+Confirm backend `allowedOrigins` in `backend/src/app.ts` includes `https://sponsors.yourschool.com`. Currently it allows `*.lovable.app` and effectively all origins, but we should tighten this to the production subdomain before go-live.
 
 ---
 
-## Part 5: Connect Lovable Frontend to Backend
+## 4. Security Hardening (before stakeholders touch it)
 
-### Step 5.1: Get Your Backend URL
-
-Your Render backend URL will be something like:
-```
-https://sponsor-portal-api.onrender.com
-```
-
-### Step 5.2: Update Lovable Environment Variable
-
-1. In Lovable, click the **project name** (top-left)
-2. Click **Settings**
-3. Scroll to **Environment Variables** section
-4. Click **Add Variable**
-5. Add:
-   - **Name**: `VITE_API_URL`
-   - **Value**: `https://sponsor-portal-api.onrender.com/api`
-6. Click **Save**
-
-### Step 5.3: Republish Frontend
-
-1. Click the **Publish** button (top-right)
-2. Click **Update** to redeploy with the new environment variable
-3. Wait for deployment to complete
+- Rotate `JWT_SECRET` to a fresh 32+ char random string on Render.
+- Confirm rate limiter is active (it is, in `app.ts`).
+- Confirm password reset and invitation links use the new `FRONTEND_URL`.
+- Tighten CORS to known origins only (remove the dev "allow all" fallback in `app.ts`).
+- Run a final security scan.
 
 ---
 
-## Part 6: Create Initial Admin User
+## 5. End-to-End QA Pass
 
-### Step 6.1: Connect to Database
+Test on the live subdomain with real accounts:
 
-```bash
-psql "YOUR_DATABASE_URL"
-```
-
-### Step 6.2: Create Admin User
-
-Run this SQL (replace with your details):
-
-```sql
--- Generate a bcrypt hash for your password (use https://bcrypt-generator.com/)
--- Or run this in Node: require('bcryptjs').hashSync('YourPassword123', 10)
-
-INSERT INTO users (email, password_hash, full_name, status)
-VALUES (
-  'admin@yourschool.com',
-  '$2a$10$...your_bcrypt_hash...',
-  'Admin User',
-  'active'
-);
-
--- Get the user ID
-SELECT id FROM users WHERE email = 'admin@yourschool.com';
-
--- Add admin role (use the ID from above)
-INSERT INTO user_roles (user_id, role)
-VALUES ('paste-user-id-here', 'admin');
-```
-
-### Step 6.3: Test Login
-
-1. Go to your published Lovable app
-2. Navigate to the login page
-3. Enter your admin credentials
-4. You should be redirected to the admin dashboard
+1. **Admin**: log in, add teacher, add sponsor, invite sponsor by email, approve a self-registration, create child, assign sponsorship, record payment, review report, send newsletter.
+2. **Teacher**: log in, mark attendance, post classroom moment, submit progress report.
+3. **Sponsor**: log in, view sponsored child, view reports, view newsletters, view events, make/view payment, invite a friend.
+4. **Auth flows**: forgot password (real email arrives), refresh token, logout.
+5. **Uploads**: child photo, report media, newsletter PDF — confirm they land on Cloudinary.
+6. **Mobile**: spot-check key pages at 375px width.
 
 ---
 
-## Troubleshooting
+## 6. Operations & Monitoring
 
-### Backend not starting?
-- Check Render logs for errors
-- Verify all environment variables are set correctly
-- Ensure `DATABASE_URL` is the External URL, not Internal
-
-### Database connection failed?
-- Verify you're using the External Database URL
-- Check if your IP needs to be whitelisted (not needed on Render)
-- Ensure database is running (green status on Render)
-
-### Frontend shows network errors?
-- Check browser console for CORS errors
-- Verify `VITE_API_URL` includes `/api` at the end
-- Republish frontend after setting environment variable
-
-### Login not working?
-- Verify admin user was created with correct password hash
-- Check that user_roles entry exists for your user
-- Check backend logs for authentication errors
+- Bookmark Render logs for backend + DB.
+- Set up Render's email alert for service failures.
+- Document the admin runbook (how to add users, reset passwords, restore from Trash).
+- Schedule DB backups (Render Starter tier includes daily backups).
 
 ---
 
-## Quick Reference
+## 7. Stakeholder Handoff
 
-| Resource | URL/Value |
-|----------|-----------|
-| **Lovable Published App** | `https://sponsor-story-stream.lovable.app` |
-| **Backend API** | `https://your-service.onrender.com/api` |
-| **Database Dashboard** | Render Dashboard → PostgreSQL |
-| **Backend Logs** | Render Dashboard → Web Service → Logs |
+- Share the subdomain URL with admin credentials.
+- Provide a short "what to test" checklist (mirrors §5).
+- Confirm: no mock data, all data lives in Postgres, all media in Cloudinary, all email via Resend.
 
+---
+
+## Open Questions
+1. What is the exact subdomain you want (e.g. `sponsors.anantvalley.com`)?
+2. Do you already have Cloudinary and Resend accounts, or do you need help signing up?
+3. Do you want to upgrade Render to Starter now, or stay on Free for the stakeholder review?
+4. Should I tighten CORS to only your subdomain in this same pass?
