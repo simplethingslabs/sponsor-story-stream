@@ -24,9 +24,13 @@ app.use(helmet({
 // CORS configuration
 const allowedOrigins = [
   process.env.FRONTEND_URL || 'http://localhost:5173',
+  'https://sponsorportal.avpschool.in',
   'https://sponsor-story-stream.lovable.app',
+  'http://localhost:5173',
+  'http://localhost:8080',
   /\.lovable\.app$/,
   /\.lovable\.dev$/,
+  /\.vercel\.app$/,
 ];
 
 app.use(cors({
@@ -42,7 +46,7 @@ app.use(cors({
     if (isAllowed) {
       callback(null, true);
     } else {
-      callback(null, true); // Allow all for now during development
+      callback(new Error(`CORS blocked: ${origin} is not an allowed origin`));
     }
   },
   credentials: true,
