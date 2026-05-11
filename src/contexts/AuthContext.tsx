@@ -2,62 +2,6 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { api } from '@/lib/api';
 import type { UserWithRoles, LoginCredentials, RegisterData, AuthState, UserRole } from '@/types';
 
-// Demo mode users for testing when backend is unavailable
-const DEMO_USERS: Record<string, { password: string; user: UserWithRoles }> = {
-  'sponsor@example.com': {
-    password: 'sponsor123',
-    user: {
-      id: 'sponsor-1',
-      email: 'sponsor@example.com',
-      full_name: 'Sarah Johnson',
-      phone: '+1234567890',
-      avatar_url: undefined,
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
-      roles: ['sponsor'],
-    },
-  },
-  'admin@school.org': {
-    password: 'admin123',
-    user: {
-      id: 'admin-1',
-      email: 'admin@school.org',
-      full_name: 'Admin User',
-      phone: '+1234567890',
-      avatar_url: undefined,
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
-      roles: ['admin'],
-    },
-  },
-  'teacher@school.org': {
-    password: 'teacher123',
-    user: {
-      id: 'teacher-1',
-      email: 'teacher@school.org',
-      full_name: 'Teacher User',
-      phone: '+1234567890',
-      avatar_url: undefined,
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
-      roles: ['teacher'],
-    },
-  },
-  'anantvalleypublicschool@gmail.com': {
-    password: 'admin123',
-    user: {
-      id: 'admin-2',
-      email: 'anantvalleypublicschool@gmail.com',
-      full_name: 'Anant Valley Admin',
-      phone: '+1234567890',
-      avatar_url: undefined,
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
-      roles: ['admin'],
-    },
-  },
-};
-
 interface AuthContextType extends AuthState {
   login: (credentials: LoginCredentials) => Promise<{ success: boolean; error?: string }>;
   register: (data: RegisterData) => Promise<{ success: boolean; error?: string }>;
@@ -86,31 +30,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (token && storedUser) {
         try {
-          // If it's a demo token, just use stored user
-          if (token.startsWith('demo-token-')) {
-            const user = JSON.parse(storedUser) as UserWithRoles;
-            setState({
-              user,
-              isAuthenticated: true,
-              isLoading: false,
-            });
-            return;
-          }
-
           // Verify token with backend
           const { data, error } = await api.get<UserWithRoles>('/auth/me');
 
           if (error || !data) {
-            // If backend unavailable but we have stored demo user, use it
-            if (error?.includes('Network error') || error?.includes('Failed to fetch')) {
-              const user = JSON.parse(storedUser) as UserWithRoles;
-              setState({
-                user,
-                isAuthenticated: true,
-                isLoading: false,
-              });
-              return;
-            }
             // Token invalid, clear everything
             api.clearTokens();
             setState({ user: null, isAuthenticated: false, isLoading: false });
@@ -167,29 +90,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       return { success: true };
-    }
-
-    // Fallback to demo mode if API is unavailable (connection refused, etc.)
-    const demoUser = DEMO_USERS[credentials.email.toLowerCase()];
-    if (demoUser && demoUser.password === credentials.password) {
-      // Demo login successful
-      const mockToken = 'demo-token-' + Date.now();
-      api.setTokens(mockToken, undefined);
-      localStorage.setItem('user', JSON.stringify(demoUser.user));
-
-      setState({
-        user: demoUser.user,
-        isAuthenticated: true,
-        isLoading: false,
-      });
-
-      return { success: true };
-    }
-
-    // Check if it was a network error (demo mode applicable) or auth error
-    if (error?.includes('Network error') || error?.includes('Failed to fetch') || error?.includes('net::ERR')) {
-      setState((prev) => ({ ...prev, isLoading: false }));
-      return { success: false, error: 'Invalid email or password (Demo mode)' };
     }
 
     setState((prev) => ({ ...prev, isLoading: false }));

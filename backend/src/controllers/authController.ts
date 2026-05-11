@@ -6,7 +6,10 @@ import pool from '../config/database';
 import { getResendClient, emailConfig, verifyResendConfig } from '../config/resend';
 import { LoginInput, RegisterInput, ForgotPasswordInput, ResetPasswordInput, RefreshTokenInput, CreateUserInput } from '../schemas/auth';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
+const JWT_SECRET: string = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
 const REFRESH_TOKEN_EXPIRES_IN = 7 * 24 * 60 * 60 * 1000; // 7 days
 

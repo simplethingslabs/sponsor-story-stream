@@ -73,6 +73,7 @@ export async function getReports(req: Request, res: Response, next: NextFunction
 export async function getReport(req: Request, res: Response, next: NextFunction) {
   try {
     const { id } = req.params;
+    const user = (req as any).user;
     
     const result = await pool.query(
       `SELECT r.*,
@@ -89,8 +90,30 @@ export async function getReport(req: Request, res: Response, next: NextFunction)
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Report not found' });
     }
-    
-    res.json(result.rows[0]);
+
+    const report = result.rows[0];
+
+    // Authorization check
+    const roles: string[] = user?.roles || [];
+    const isStaff = roles.some((r) => ['super_admin', 'admin', 'teacher'].includes(r));
+
+    if (!isStaff) {
+      // Sponsors: must have an active sponsorship for the child, and report must be published
+      if (report.status !== 'published') {
+        return res.status(404).json({ error: 'Report not found' });
+      }
+      const sponsorshipCheck = await pool.query(
+        `SELECT 1 FROM sponsorships
+         WHERE sponsor_id = $1 AND child_id = $2 AND status = 'active' AND deleted_at IS NULL
+         LIMIT 1`,
+        [user?.id, report.child_id]
+      );
+      if (sponsorshipCheck.rows.length === 0) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+    }
+
+    res.json(report);
   } catch (error) {
     next(error);
   }

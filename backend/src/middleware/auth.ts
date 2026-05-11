@@ -3,7 +3,10 @@ import jwt from 'jsonwebtoken';
 import { query } from '../config/database';
 import { AuthenticatedRequest, JWTPayload, UserPublic, User } from '../types';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
+const JWT_SECRET: string = process.env.JWT_SECRET;
 
 // Verify JWT token and attach user to request
 export async function authenticate(
