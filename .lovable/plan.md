@@ -1,123 +1,105 @@
-# Go-Live Plan: Sponsor Portal
+# Going Live Without Upgrading Lovable
 
-## Goal
-Get the app fully production-ready and live on a subdomain of your existing website (e.g. `sponsors.yourschool.com`), with no mock data and all integrations connected.
+## The Situation (in plain English)
 
----
+Lovable's "Connect Custom Domain" feature is a **paid** add-on. You don't want to pay for it. That's fine — Lovable lets you **export your code** and host it anywhere else for free.
 
-## 1. Backend (Render) — Verify & Complete
+So the new plan is:
+- **Frontend** (what users see) → host for **free on Vercel** (or Netlify, same idea)
+- **Backend** (the API, already on Render) → stays exactly where it is
+- **Subdomain** `sponsorportal.avpschool.in` → points to Vercel instead of Lovable
 
-### 1.1 Confirm backend is healthy
-- Hit `https://sponsor-portal-api-a49s.onrender.com/health` and confirm:
-  - `database: connected`
-  - `cloudinary: configured`
-  - `resend: configured`
-
-### 1.2 Add missing environment variables on Render
-Currently missing (per earlier discussion):
-- `CLOUDINARY_CLOUD_NAME`
-- `CLOUDINARY_API_KEY`
-- `CLOUDINARY_API_SECRET`
-- `RESEND_API_KEY`
-- `FROM_EMAIL` (e.g. `noreply@yourschool.com`)
-- `FROM_NAME` (e.g. `Anant Valley Sponsor Portal`)
-- `FRONTEND_URL` → must be set to the final subdomain (e.g. `https://sponsors.yourschool.com`)
-
-Without Cloudinary: photo/document/newsletter uploads will fail.
-Without Resend: invitations, password resets, welcome emails will not send.
-
-### 1.3 Run any pending migrations
-Verify all 6 migrations (001–006) have been applied to the Render Postgres DB.
-
-### 1.4 Render plan
-- Free tier sleeps after 15 min of inactivity (cold-start ~30s). For stakeholder demos and real users, upgrade the web service to **Starter ($7/mo)** to avoid cold starts.
-- Same for the database (Free tier expires after 90 days).
+You pay nothing extra. You just do the hosting yourself in 15 minutes.
 
 ---
 
-## 2. Initial Data — Seed Real Accounts
+## Why Vercel?
 
-### 2.1 Create production admin
-- One real admin account for the school (replacing any demo `anantvalleypublicschool@gmail.com` placeholder if it doesn't exist yet).
-- Created via SQL on Render DB (bcrypt-hashed password).
+- 100% free for projects this size
+- Built specifically for React/Vite apps like yours
+- Custom subdomains are free and unlimited
+- Automatic HTTPS (the green padlock) — free
+- Auto-redeploys whenever you push code to GitHub
 
-### 2.2 Create initial teachers and sponsors
-- Once admin can log in, use the new **Add Teacher** and **Add Sponsor** screens.
-- Alternative: bulk-seed via SQL if a list exists.
-
-### 2.3 Remove/verify demo data
-- Audit the DB for any leftover seed/demo rows (test children, fake payments).
-- Confirm `src/data/mockData.ts` is no longer imported anywhere in production code paths.
+Netlify works the same way if you prefer it. Steps are nearly identical.
 
 ---
 
-## 3. Frontend — Subdomain Deployment
+## The Plan, Step by Step
 
-You have two options. Pick one:
+### Step 1 — Get your code into GitHub (one-time, ~5 min)
+Lovable already syncs your project to GitHub. If you haven't connected GitHub yet:
+1. In Lovable, click the **+** button in the chat → **GitHub** → **Connect project**
+2. Authorize Lovable, pick a repo name, done.
+Now every change you make in Lovable is automatically saved to GitHub.
 
-### Option A — Use Lovable hosting on your subdomain (recommended, simplest)
-1. In Lovable: **Project Settings → Domains → Connect Domain** → enter `sponsors.yourschool.com`.
-2. Lovable shows DNS records to add at your existing registrar (GoDaddy or wherever the parent domain lives):
-   - `A` record: name `sponsors`, value `185.158.133.1`
-   - `TXT` record: `_lovable.sponsors` with verification value
-3. Wait for DNS propagation + automatic SSL provisioning.
-4. Set Lovable env var `VITE_API_URL` → `https://sponsor-portal-api-a49s.onrender.com/api`.
-5. Click **Publish → Update**.
+### Step 2 — Create a free Vercel account (~2 min)
+1. Go to **vercel.com** → **Sign Up** → choose **Continue with GitHub**
+2. That's it. Free "Hobby" plan is enough.
 
-This keeps the parent site (`yourschool.com`) untouched — only the subdomain points to Lovable.
+### Step 3 — Import your project into Vercel (~3 min)
+1. In Vercel, click **Add New → Project**
+2. Pick the GitHub repo Lovable created
+3. Vercel auto-detects it as Vite. Leave defaults.
+4. Before clicking Deploy, scroll to **Environment Variables** and add:
+   - **Name:** `VITE_API_URL`
+   - **Value:** `https://sponsor-portal-api-a49s.onrender.com/api`
+5. Click **Deploy**. Wait ~1 minute. Your app is now live at something like `sponsor-portal-xyz.vercel.app`.
 
-### Option B — Self-host the built frontend on your own server
-- Run `npm run build`, deploy `dist/` to your existing host under the subdomain.
-- Configure SPA fallback (rewrite all paths to `index.html`).
-- More work; only choose if there is a policy reason not to use Lovable hosting.
+### Step 4 — Point your subdomain at Vercel (~5 min + DNS wait)
+1. In Vercel: open your project → **Settings → Domains** → enter `sponsorportal.avpschool.in` → **Add**
+2. Vercel will show you **one DNS record** to add. It will look like:
+   - **Type:** CNAME
+   - **Name:** `sponsorportal`
+   - **Value:** `cname.vercel-dns.com`
+3. Go to **GoDaddy → My Products → avpschool.in → DNS** (the same place I showed you before, the **DNS Records** tab — NOT the "Child nameservers" one).
+4. Click **Add New Record** and enter exactly what Vercel showed you.
+5. Save. Wait 5 minutes to a few hours for DNS to propagate.
+6. Vercel will automatically issue a free HTTPS certificate. You'll see a green checkmark when it's ready.
 
-### 3.2 CORS
-Confirm backend `allowedOrigins` in `backend/src/app.ts` includes `https://sponsors.yourschool.com`. Currently it allows `*.lovable.app` and effectively all origins, but we should tighten this to the production subdomain before go-live.
+Visit `https://sponsorportal.avpschool.in` — your app is live.
 
----
+### Step 5 — Tell the backend about the new address (~2 min)
+On Render, open your backend service → **Environment** → set/update:
+- `FRONTEND_URL` = `https://sponsorportal.avpschool.in`
 
-## 4. Security Hardening (before stakeholders touch it)
+Then in this Lovable project, I'll update `backend/src/app.ts` so CORS only allows your real subdomain (and Lovable previews) — locking out random origins for security.
 
-- Rotate `JWT_SECRET` to a fresh 32+ char random string on Render.
-- Confirm rate limiter is active (it is, in `app.ts`).
-- Confirm password reset and invitation links use the new `FRONTEND_URL`.
-- Tighten CORS to known origins only (remove the dev "allow all" fallback in `app.ts`).
-- Run a final security scan.
-
----
-
-## 5. End-to-End QA Pass
-
-Test on the live subdomain with real accounts:
-
-1. **Admin**: log in, add teacher, add sponsor, invite sponsor by email, approve a self-registration, create child, assign sponsorship, record payment, review report, send newsletter.
-2. **Teacher**: log in, mark attendance, post classroom moment, submit progress report.
-3. **Sponsor**: log in, view sponsored child, view reports, view newsletters, view events, make/view payment, invite a friend.
-4. **Auth flows**: forgot password (real email arrives), refresh token, logout.
-5. **Uploads**: child photo, report media, newsletter PDF — confirm they land on Cloudinary.
-6. **Mobile**: spot-check key pages at 375px width.
-
----
-
-## 6. Operations & Monitoring
-
-- Bookmark Render logs for backend + DB.
-- Set up Render's email alert for service failures.
-- Document the admin runbook (how to add users, reset passwords, restore from Trash).
-- Schedule DB backups (Render Starter tier includes daily backups).
+### Step 6 — Going forward
+- Edit your app in Lovable as usual.
+- When you're happy, those changes flow into GitHub automatically, and Vercel auto-deploys them to your subdomain within ~60 seconds.
+- You never need to "publish" in Lovable for the live site.
 
 ---
 
-## 7. Stakeholder Handoff
+## What I'll Change in the Code
 
-- Share the subdomain URL with admin credentials.
-- Provide a short "what to test" checklist (mirrors §5).
-- Confirm: no mock data, all data lives in Postgres, all media in Cloudinary, all email via Resend.
+Just one small backend file:
+- `backend/src/app.ts` — replace the "allow all origins" fallback with a strict list:
+  - `https://sponsorportal.avpschool.in`
+  - Lovable preview URLs (so you can keep editing safely)
+
+Everything else (Vercel signup, GitHub, GoDaddy DNS, Render env var) you do once in those dashboards — no code changes needed.
 
 ---
 
-## Open Questions
-1. What is the exact subdomain you want (e.g. `sponsors.anantvalley.com`)?
-2. Do you already have Cloudinary and Resend accounts, or do you need help signing up?
-3. Do you want to upgrade Render to Starter now, or stay on Free for the stakeholder review?
-4. Should I tighten CORS to only your subdomain in this same pass?
+## Cost Summary
+
+| Item | Cost |
+|------|------|
+| Vercel Hobby plan (frontend hosting + subdomain + HTTPS) | **Free** |
+| GitHub | **Free** |
+| Render backend (current free tier) | **Free** (sleeps after 15 min idle) |
+| Render Postgres (free tier) | **Free** (expires after 90 days — upgrade later) |
+| Lovable (no domain upgrade) | **No change** |
+| **Total extra spend right now** | **₹0** |
+
+The only thing I'd still recommend paying for *eventually* is Render Starter ($7/mo ≈ ₹600/mo) so the backend doesn't sleep — but only when you're ready for real users. For stakeholder review, free is fine.
+
+---
+
+## Open Questions Before I Proceed
+
+1. Are you OK with using **Vercel** (recommended), or do you prefer **Netlify** / Cloudflare Pages? Steps are nearly identical.
+2. Have you already connected this project to **GitHub**? (If yes, we skip Step 1.)
+3. Once you confirm, I'll make the small CORS edit in `backend/src/app.ts` and walk you through the dashboard clicks live.
