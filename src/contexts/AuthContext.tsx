@@ -30,31 +30,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (token && storedUser) {
         try {
-          // If it's a demo token, just use stored user
-          if (token.startsWith('demo-token-')) {
-            const user = JSON.parse(storedUser) as UserWithRoles;
-            setState({
-              user,
-              isAuthenticated: true,
-              isLoading: false,
-            });
-            return;
-          }
-
           // Verify token with backend
           const { data, error } = await api.get<UserWithRoles>('/auth/me');
 
           if (error || !data) {
-            // If backend unavailable but we have stored demo user, use it
-            if (error?.includes('Network error') || error?.includes('Failed to fetch')) {
-              const user = JSON.parse(storedUser) as UserWithRoles;
-              setState({
-                user,
-                isAuthenticated: true,
-                isLoading: false,
-              });
-              return;
-            }
             // Token invalid, clear everything
             api.clearTokens();
             setState({ user: null, isAuthenticated: false, isLoading: false });
