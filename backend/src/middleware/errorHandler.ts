@@ -79,7 +79,6 @@ export function errorHandler(
       res.status(409).json({
         error: 'A record with this value already exists',
         code: 'DUPLICATE_ENTRY',
-        details: pgError.detail,
       });
       return;
     }
@@ -89,7 +88,6 @@ export function errorHandler(
       res.status(400).json({
         error: 'Referenced record does not exist',
         code: 'FOREIGN_KEY_VIOLATION',
-        details: pgError.detail,
       });
       return;
     }
@@ -99,7 +97,6 @@ export function errorHandler(
       res.status(400).json({
         error: 'Required field is missing',
         code: 'NOT_NULL_VIOLATION',
-        details: pgError.column,
       });
       return;
     }
@@ -109,7 +106,6 @@ export function errorHandler(
       res.status(400).json({
         error: 'Value violates constraint',
         code: 'CHECK_VIOLATION',
-        details: pgError.constraint,
       });
       return;
     }
