@@ -113,29 +113,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: true };
     }
 
-    // Fallback to demo mode if API is unavailable (connection refused, etc.)
-    const demoUser = DEMO_USERS[credentials.email.toLowerCase()];
-    if (demoUser && demoUser.password === credentials.password) {
-      // Demo login successful
-      const mockToken = 'demo-token-' + Date.now();
-      api.setTokens(mockToken, undefined);
-      localStorage.setItem('user', JSON.stringify(demoUser.user));
-
-      setState({
-        user: demoUser.user,
-        isAuthenticated: true,
-        isLoading: false,
-      });
-
-      return { success: true };
-    }
-
-    // Check if it was a network error (demo mode applicable) or auth error
-    if (error?.includes('Network error') || error?.includes('Failed to fetch') || error?.includes('net::ERR')) {
-      setState((prev) => ({ ...prev, isLoading: false }));
-      return { success: false, error: 'Invalid email or password (Demo mode)' };
-    }
-
     setState((prev) => ({ ...prev, isLoading: false }));
     return { success: false, error: error || 'Login failed' };
   }, []);
