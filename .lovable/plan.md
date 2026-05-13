@@ -1,105 +1,60 @@
-# Going Live Without Upgrading Lovable
+## What's wrong
 
-## The Situation (in plain English)
+Two separate issues are stacked on top of each other:
 
-Lovable's "Connect Custom Domain" feature is a **paid** add-on. You don't want to pay for it. That's fine — Lovable lets you **export your code** and host it anywhere else for free.
+### Issue 1 — `vercel.json` is in the wrong folder
+It currently lives at `src/vercel.json`. Vercel only reads `vercel.json` from the **project root** (next to `package.json`). So your rewrite rule is being completely ignored, which is why deep links 404.
 
-So the new plan is:
-- **Frontend** (what users see) → host for **free on Vercel** (or Netlify, same idea)
-- **Backend** (the API, already on Render) → stays exactly where it is
-- **Subdomain** `sponsorportal.avpschool.in` → points to Vercel instead of Lovable
+### Issue 2 — The root URL itself is 404, not just deep links
+A Vercel-branded "404: NOT_FOUND" on the root URL usually means **Vercel is not finding your built files**. For a Vite app it should serve `dist/index.html`. Most common causes:
+- **Framework Preset** is set to "Other" instead of **Vite** → Vercel doesn't know the output folder is `dist`
+- **Root Directory** in Vercel project settings is wrong (e.g. pointing to `src/` or `backend/`)
+- **Build failed** silently — check the Deployments → latest → Build Logs
 
-You pay nothing extra. You just do the hosting yourself in 15 minutes.
-
----
-
-## Why Vercel?
-
-- 100% free for projects this size
-- Built specifically for React/Vite apps like yours
-- Custom subdomains are free and unlimited
-- Automatic HTTPS (the green padlock) — free
-- Auto-redeploys whenever you push code to GitHub
-
-Netlify works the same way if you prefer it. Steps are nearly identical.
+### Issue 3 — The URL is `sponsorstorystream` not your subdomain
+That's fine — that's just Vercel's auto-generated URL. The custom subdomain `sponsorportal.avpschool.in` gets attached separately under Settings → Domains. We'll do that after the site loads.
 
 ---
 
-## The Plan, Step by Step
+## The Plan
 
-### Step 1 — Get your code into GitHub (one-time, ~5 min)
-Lovable already syncs your project to GitHub. If you haven't connected GitHub yet:
-1. In Lovable, click the **+** button in the chat → **GitHub** → **Connect project**
-2. Authorize Lovable, pick a repo name, done.
-Now every change you make in Lovable is automatically saved to GitHub.
+### Step 1 — Move `vercel.json` to the project root (I'll do this)
+- Delete `src/vercel.json`
+- Create `vercel.json` at the repo root with the SPA rewrite rule
 
-### Step 2 — Create a free Vercel account (~2 min)
-1. Go to **vercel.com** → **Sign Up** → choose **Continue with GitHub**
-2. That's it. Free "Hobby" plan is enough.
+This auto-syncs to GitHub and triggers a Vercel redeploy.
 
-### Step 3 — Import your project into Vercel (~3 min)
-1. In Vercel, click **Add New → Project**
-2. Pick the GitHub repo Lovable created
-3. Vercel auto-detects it as Vite. Leave defaults.
-4. Before clicking Deploy, scroll to **Environment Variables** and add:
-   - **Name:** `VITE_API_URL`
-   - **Value:** `https://sponsor-portal-api-a49s.onrender.com/api`
-5. Click **Deploy**. Wait ~1 minute. Your app is now live at something like `sponsor-portal-xyz.vercel.app`.
+### Step 2 — You check Vercel project settings (2 min, in dashboard)
+Open your Vercel project → **Settings → General** and confirm:
 
-### Step 4 — Point your subdomain at Vercel (~5 min + DNS wait)
-1. In Vercel: open your project → **Settings → Domains** → enter `sponsorportal.avpschool.in` → **Add**
-2. Vercel will show you **one DNS record** to add. It will look like:
-   - **Type:** CNAME
-   - **Name:** `sponsorportal`
-   - **Value:** `cname.vercel-dns.com`
-3. Go to **GoDaddy → My Products → avpschool.in → DNS** (the same place I showed you before, the **DNS Records** tab — NOT the "Child nameservers" one).
-4. Click **Add New Record** and enter exactly what Vercel showed you.
-5. Save. Wait 5 minutes to a few hours for DNS to propagate.
-6. Vercel will automatically issue a free HTTPS certificate. You'll see a green checkmark when it's ready.
+| Setting | Should be |
+|---|---|
+| Framework Preset | **Vite** |
+| Root Directory | `./` (leave empty / project root) |
+| Build Command | `npm run build` (or leave default) |
+| Output Directory | `dist` (or leave default) |
+| Install Command | `npm install` (or leave default) |
 
-Visit `https://sponsorportal.avpschool.in` — your app is live.
+If Framework Preset says "Other", change it to **Vite** and click **Save**, then go to **Deployments** → click the **⋯** on the latest one → **Redeploy**.
 
-### Step 5 — Tell the backend about the new address (~2 min)
-On Render, open your backend service → **Environment** → set/update:
-- `FRONTEND_URL` = `https://sponsorportal.avpschool.in`
+### Step 3 — Check the build logs if it still 404s
+Vercel → **Deployments** → click the latest deployment → **Build Logs** tab. Look for:
+- "Build Completed" with files listed under `dist/` ✅
+- Any red error messages ❌ (TypeScript errors, missing env vars, etc.)
 
-Then in this Lovable project, I'll update `backend/src/app.ts` so CORS only allows your real subdomain (and Lovable previews) — locking out random origins for security.
+Send me a screenshot of the build log if you see errors. The most common one is a missing `VITE_API_URL` — confirm in **Settings → Environment Variables** it exists and is set to `https://sponsor-portal-api-a49s.onrender.com/api`.
 
-### Step 6 — Going forward
-- Edit your app in Lovable as usual.
-- When you're happy, those changes flow into GitHub automatically, and Vercel auto-deploys them to your subdomain within ~60 seconds.
-- You never need to "publish" in Lovable for the live site.
+### Step 4 — Once the root URL loads, attach your real subdomain
+Vercel project → **Settings → Domains** → add `sponsorportal.avpschool.in` → copy the CNAME it gives you → add that CNAME in GoDaddy DNS (as planned earlier).
+
+You can also rename the Vercel project from `sponsor-story-stream` to anything you want under **Settings → General → Project Name** — but it doesn't matter once the custom domain is attached, because users will only ever see `sponsorportal.avpschool.in`.
 
 ---
 
-## What I'll Change in the Code
+## What I'll change in code
 
-Just one small backend file:
-- `backend/src/app.ts` — replace the "allow all origins" fallback with a strict list:
-  - `https://sponsorportal.avpschool.in`
-  - Lovable preview URLs (so you can keep editing safely)
+Only one tiny thing:
+- **Delete** `src/vercel.json`
+- **Create** `vercel.json` at the project root with the same content
 
-Everything else (Vercel signup, GitHub, GoDaddy DNS, Render env var) you do once in those dashboards — no code changes needed.
-
----
-
-## Cost Summary
-
-| Item | Cost |
-|------|------|
-| Vercel Hobby plan (frontend hosting + subdomain + HTTPS) | **Free** |
-| GitHub | **Free** |
-| Render backend (current free tier) | **Free** (sleeps after 15 min idle) |
-| Render Postgres (free tier) | **Free** (expires after 90 days — upgrade later) |
-| Lovable (no domain upgrade) | **No change** |
-| **Total extra spend right now** | **₹0** |
-
-The only thing I'd still recommend paying for *eventually* is Render Starter ($7/mo ≈ ₹600/mo) so the backend doesn't sleep — but only when you're ready for real users. For stakeholder review, free is fine.
-
----
-
-## Open Questions Before I Proceed
-
-1. Are you OK with using **Vercel** (recommended), or do you prefer **Netlify** / Cloudflare Pages? Steps are nearly identical.
-2. Have you already connected this project to **GitHub**? (If yes, we skip Step 1.)
-3. Once you confirm, I'll make the small CORS edit in `backend/src/app.ts` and walk you through the dashboard clicks live.
+Everything else is dashboard clicks on your end.
