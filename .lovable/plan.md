@@ -1,65 +1,95 @@
-# Fix Render "Failed to connect to database" + Admin credentials
+# Reconnect new Render Postgres and bring system back up
 
-## What the error means
+No code changes are needed — `backend/src/config/database.ts` already reads `DATABASE_URL` and enables SSL when `NODE_ENV=production`. This is a config + one-time migration task.
 
-The Render log shows:
+## Step 1 — Build the connection string
+
+Take your External Database URL and append `?sslmode=require` (Render Postgres requires SSL from outside its network):
 
 ```
-sponsor-portal-backend@1.0.0 start
-node dist/app.js
-❌ Failed to connect to database
+postgresql://sponsor_admin:CKwszKZiIDXZrKupgjfwE9H0sa4tKU44@dpg-d82oslv7f7vs738cccp0-a.singapore-postgres.render.com/sponsor_portal_4i5n?sslmode=require
 ```
 
-This comes from `backend/src/app.ts` → `checkConnection()` in `backend/src/config/database.ts`. It runs `SELECT 1` against the Postgres pool built from `process.env.DATABASE_URL`. If that env var is missing, wrong, or the DB host blocks the connection, the process exits with code 1 — exactly what you're seeing.
+Note: this is your **External** URL. Use it for (a) running migrations from your laptop and (b) on Render only if your backend service is in a **different region** than Singapore. If the backend is in Singapore too, prefer the **Internal Database URL** shown on the DB page (faster, free egress, no SSL param needed).
 
-It is **not** a code bug. It's a Render configuration problem.
+## Step 2 — Run the migrations against the new DB
 
-## Fix on Render (backend service "sponsor-portal-backend")
+From your local machine, in the `backend/` directory:
 
-1. Render dashboard → your backend Web Service → **Environment** tab.
-2. Confirm these env vars exist and are correct:
-   - `DATABASE_URL` — full Postgres connection string (must include `?sslmode=require` for Render Postgres or external providers like Neon/Supabase)
-   - `NODE_ENV=production`
-   - `JWT_SECRET` — long random string
-   - `JWT_EXPIRES_IN=15m`
-   - `JWT_REFRESH_EXPIRES_IN=7d`
-   - `FRONTEND_URL=https://sponsorportal.avpschool.in`
-   - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
-   - `RESEND_API_KEY`, `FROM_EMAIL`, `FROM_NAME`
-3. The most likely culprit: `DATABASE_URL` is missing, has a typo, or lacks SSL.
-   - If your DB is Render Postgres: copy the **Internal Database URL** from the DB's dashboard page (only works if backend and DB are in the same Render region).
-   - If external (Neon/Supabase/etc.): use the **External/Pooled** URL and append `?sslmode=require`.
-4. Click **Save Changes** → Render auto-redeploys. Watch logs for `📦 Connected to PostgreSQL database`.
-5. Once connected, hit `https://sponsor-portal-api-a49s.onrender.com/health` — should return `{"status":"healthy", services:{database:"connected", ...}}`.
+```bash
+export DATABASE_URL="postgresql://sponsor_admin:CKwszKZiIDXZrKupgjfwE9H0sa4tKU44@dpg-d82oslv7f7vs738cccp0-a.singapore-postgres.render.com/sponsor_portal_4i5n?sslmode=require"
 
-## Run migrations on the production DB (one-time)
+for f in migrations/00*.sql; do
+  echo "Running $f..."
+  psql "$DATABASE_URL" -f "$f" || { echo "FAILED on $f"; break; }
+done
+```
 
-If this is a fresh DB, the `users` table doesn't exist yet, so even after the connection works, login will fail. Run the SQL files in `backend/migrations/` in order (001 → 006) against the production database. Easiest path:
+This runs, in order:
+- `001_initial_schema.sql` — all core tables + seeds the default admin
+- `002_user_roles_table.sql`
+- `003_add_missing_columns.sql`
+- `004_payments_table.sql`
+- `005_attendance_table.sql`
+- `006_classroom_moments.sql`
 
-- Copy `DATABASE_URL` value locally, then from `backend/`:
-  ```
-  for f in migrations/00*.sql; do psql "$DATABASE_URL" -f "$f"; done
-  ```
-- Or paste each file into the Render Postgres "Shell" tab.
+Quick verification:
 
-Migration `001_initial_schema.sql` seeds the default admin.
+```bash
+psql "$DATABASE_URL" -c "SELECT email, roles FROM users;"
+```
 
-## Default admin credentials
+You should see `admin@sponsorportal.com` with `{super_admin,admin}`.
 
-From `backend/migrations/001_initial_schema.sql`:
+If you don't have `psql` locally, use Render's DB **Shell** tab and paste each migration file's contents in order.
 
-- **Email:** `admin@sponsorportal.com`
-- **Password:** `Admin123!`
-- **Roles:** `super_admin`, `admin`
+## Step 3 — Update Render env vars
 
-**Change this password immediately after first login** (Login → Profile/Settings → Change Password). The seed line uses `ON CONFLICT DO NOTHING`, so re-running migrations won't reset it.
+Render dashboard → `sponsor-portal-backend` service → **Environment** → set/update:
 
-## How to verify after redeploy
+- `DATABASE_URL` = the connection string from Step 1 (use Internal URL if same region, External URL + `?sslmode=require` otherwise)
+- Confirm these are still set from before:
+  - `NODE_ENV=production`
+  - `JWT_SECRET` (long random string)
+  - `JWT_EXPIRES_IN=15m`
+  - `JWT_REFRESH_EXPIRES_IN=7d`
+  - `FRONTEND_URL=https://sponsorportal.avpschool.in`
+  - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
+  - `RESEND_API_KEY`, `FROM_EMAIL`, `FROM_NAME`
 
-1. Render logs show `📦 Connected to PostgreSQL database` and the `🚀 Server running on port …` banner.
-2. `GET /health` returns `200` with `database: connected`.
-3. From the live frontend, log in with the admin credentials above. Refresh the page — you should stay logged in (the previously-reported logout-on-refresh bug is already fixed via `localStorage` + refresh-token flow in `src/lib/api.ts`).
+Click **Save Changes** — Render auto-redeploys.
 
-## What I will do once you approve
+## Step 4 — Verify the backend
 
-Nothing in code — this is purely a Render env-var + one-time migration task. I'll update `.lovable/plan.md` with the credentials and the env-var checklist so you have it for handover, and that's it.
+Watch the Render logs for:
+
+```
+📦 Connected to PostgreSQL database
+🚀 Server running on port ...
+```
+
+Then hit:
+
+```
+https://sponsor-portal-api-a49s.onrender.com/health
+```
+
+Expect `200` with `database: "connected"`.
+
+## Step 5 — Verify the app end-to-end
+
+1. Open the live frontend.
+2. Log in with the seeded admin:
+   - **Email:** `admin@sponsorportal.com`
+   - **Password:** `Admin123!`
+3. Refresh — you should stay logged in.
+4. **Immediately change the admin password** (Profile → Change Password). Migrations use `ON CONFLICT DO NOTHING`, so re-running them won't reset it.
+5. Smoke test: create a child, invite a sponsor, upload a photo (verifies Cloudinary), trigger a notification email (verifies Resend).
+
+## Security note
+
+The DB URL you pasted contains a live password. After this is done, rotate it: Render DB page → **Reset Password** → update `DATABASE_URL` on the backend service → redeploy.
+
+## What I'll do on approval
+
+Nothing in code — everything above is a Render dashboard + one-time `psql` task. If you'd like, on approval I can also update `.lovable/plan.md` to replace the old DB recovery notes with this new-DB checklist for handover.
