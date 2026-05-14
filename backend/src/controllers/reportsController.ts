@@ -303,7 +303,7 @@ export async function publishReport(req: Request, res: Response, next: NextFunct
     // Create in-app notifications for all sponsors of this child
     await notifyChildSponsors(
       report.child_id,
-      'report',
+      'report_published',
       'New Progress Report',
       `${report.quarter} ${report.year} report for ${childName} is now available.`,
       `/sponsor/children/${report.child_id}/reports/${report.id}`

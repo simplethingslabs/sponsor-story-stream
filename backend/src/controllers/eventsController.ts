@@ -130,7 +130,7 @@ export async function createEvent(req: Request, res: Response, next: NextFunctio
         year: 'numeric',
       });
       await notifyAllSponsors(
-        'event',
+        'event_created',
         'New School Event',
         `${event.title} is scheduled for ${eventDate}.`,
         `/sponsor/events`

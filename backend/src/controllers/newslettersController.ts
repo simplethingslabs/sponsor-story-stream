@@ -97,7 +97,7 @@ export async function createNewsletter(req: Request, res: Response, next: NextFu
     
     // Notify all sponsors about the new newsletter
     await notifyAllSponsors(
-      'newsletter',
+      'newsletter_published',
       'New Newsletter Published',
       `${newsletter.title} is now available to read.`,
       `/sponsor/newsletters/${newsletter.id}`

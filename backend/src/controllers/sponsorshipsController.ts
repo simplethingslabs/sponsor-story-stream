@@ -98,7 +98,7 @@ export async function assignSponsorship(req: Request, res: Response, next: NextF
     // Notify the sponsor about their new sponsorship
     await createNotification({
       userId: data.sponsor_id,
-      type: 'sponsorship',
+      type: 'sponsorship_assigned',
       title: 'New Sponsorship Assigned',
       message: `You are now sponsoring ${sponsorship.child_name}. Welcome to the family!`,
       link: `/sponsor/children/${data.child_id}`,

@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../config/database';
 
-export type NotificationType = 'report' | 'newsletter' | 'event' | 'sponsorship' | 'system';
+export type NotificationType = 'report_published' | 'newsletter_published' | 'event_created' | 'sponsorship_assigned' | 'invitation_accepted' | 'registration_approved' | 'system';
 
 export interface CreateNotificationParams {
   userId: string;
