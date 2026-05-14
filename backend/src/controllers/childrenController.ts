@@ -186,7 +186,7 @@ export async function updateChild(req: Request, res: Response, next: NextFunctio
 export async function deleteChild(req: Request, res: Response, next: NextFunction) {
   try {
     const { id } = req.params;
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     
     const result = await pool.query(
       `UPDATE children 
@@ -293,7 +293,7 @@ export async function batchCreateChildren(req: Request, res: Response, next: Nex
 export async function batchDeleteChildren(req: Request, res: Response, next: NextFunction) {
   try {
     const { ids } = req.body;
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     
     const result = await pool.query(
       `UPDATE children 
@@ -318,7 +318,7 @@ export async function batchDeleteChildren(req: Request, res: Response, next: Nex
 // Get children for a sponsor
 export async function getChildrenForSponsor(req: Request, res: Response, next: NextFunction) {
   try {
-    const sponsorId = req.user?.userId;
+    const sponsorId = req.user?.id;
     const { page = 1, limit = 20 } = req.query;
     
     const offset = (Number(page) - 1) * Number(limit);

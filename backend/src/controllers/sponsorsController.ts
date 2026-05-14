@@ -115,7 +115,7 @@ export async function updateSponsor(req: Request, res: Response, next: NextFunct
 export async function deleteSponsor(req: Request, res: Response, next: NextFunction) {
   try {
     const { id } = req.params;
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     
     // End all active sponsorships first
     await pool.query(
@@ -147,7 +147,7 @@ export async function deleteSponsor(req: Request, res: Response, next: NextFunct
 // Get sponsor statistics
 export async function getSponsorStats(req: Request, res: Response, next: NextFunction) {
   try {
-    const sponsorId = req.user?.userId;
+    const sponsorId = req.user?.id;
     
     const result = await pool.query(
       `SELECT 

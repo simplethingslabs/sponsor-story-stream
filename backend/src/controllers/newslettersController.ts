@@ -166,7 +166,7 @@ export async function updateNewsletter(req: Request, res: Response, next: NextFu
 export async function deleteNewsletter(req: Request, res: Response, next: NextFunction) {
   try {
     const { id } = req.params;
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     
     const result = await pool.query(
       `UPDATE newsletters 
@@ -213,7 +213,7 @@ export async function restoreNewsletter(req: Request, res: Response, next: NextF
 export async function batchDeleteNewsletters(req: Request, res: Response, next: NextFunction) {
   try {
     const { ids } = req.body;
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     
     const result = await pool.query(
       `UPDATE newsletters 

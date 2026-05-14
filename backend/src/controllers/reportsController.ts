@@ -123,7 +123,7 @@ export async function getReport(req: Request, res: Response, next: NextFunction)
 export async function createReport(req: Request, res: Response, next: NextFunction) {
   try {
     const data = req.body as CreateReportInput;
-    const teacherId = req.user?.userId;
+    const teacherId = req.user?.id;
     const id = uuidv4();
     
     const client = await pool.connect();
@@ -345,7 +345,7 @@ export async function requestRevision(req: Request, res: Response, next: NextFun
   try {
     const { id } = req.params;
     const { feedback } = req.body;
-    const reviewerId = req.user?.userId;
+    const reviewerId = req.user?.id;
     
     const result = await pool.query(
       `UPDATE progress_reports 
@@ -382,7 +382,7 @@ export async function requestRevision(req: Request, res: Response, next: NextFun
 export async function approveReport(req: Request, res: Response, next: NextFunction) {
   try {
     const { id } = req.params;
-    const reviewerId = req.user?.userId;
+    const reviewerId = req.user?.id;
     
     const result = await pool.query(
       `UPDATE progress_reports 
@@ -419,7 +419,7 @@ export async function approveReport(req: Request, res: Response, next: NextFunct
 export async function deleteReport(req: Request, res: Response, next: NextFunction) {
   try {
     const { id } = req.params;
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     
     const result = await pool.query(
       `UPDATE progress_reports 
@@ -466,7 +466,7 @@ export async function restoreReport(req: Request, res: Response, next: NextFunct
 export async function batchDeleteReports(req: Request, res: Response, next: NextFunction) {
   try {
     const { ids } = req.body;
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     
     const result = await pool.query(
       `UPDATE progress_reports 
@@ -491,7 +491,7 @@ export async function batchDeleteReports(req: Request, res: Response, next: Next
 // Get reports for a sponsor's children
 export async function getReportsForSponsor(req: Request, res: Response, next: NextFunction) {
   try {
-    const sponsorId = req.user?.userId;
+    const sponsorId = req.user?.id;
     const { page = 1, limit = 20, child_id } = req.query;
     
     let whereClause = `s.sponsor_id = $1 AND s.status = 'active' AND s.deleted_at IS NULL 

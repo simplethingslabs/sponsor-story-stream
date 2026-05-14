@@ -379,7 +379,7 @@ export async function logout(req: Request, res: Response, next: NextFunction) {
 // Get current user
 export async function getCurrentUser(req: Request, res: Response, next: NextFunction) {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     
     const result = await pool.query(
       `SELECT u.id, u.email, u.full_name, u.avatar_url, u.phone, u.created_at, u.updated_at,
@@ -410,7 +410,7 @@ export async function getCurrentUser(req: Request, res: Response, next: NextFunc
 // Update current user
 export async function updateCurrentUser(req: Request, res: Response, next: NextFunction) {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     const { full_name, phone, avatar_url } = req.body;
     
     const result = await pool.query(

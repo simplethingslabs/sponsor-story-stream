@@ -69,7 +69,7 @@ export async function getPendingRegistration(req: Request, res: Response, next: 
 export async function approveRegistration(req: Request, res: Response, next: NextFunction) {
   try {
     const { id } = req.params;
-    const reviewerId = req.user?.userId;
+    const reviewerId = req.user?.id;
     
     // Get pending registration
     const pendingResult = await pool.query(
@@ -143,7 +143,7 @@ export async function rejectRegistration(req: Request, res: Response, next: Next
   try {
     const { id } = req.params;
     const { reason } = req.body;
-    const reviewerId = req.user?.userId;
+    const reviewerId = req.user?.id;
     
     // Get pending registration
     const pendingResult = await pool.query(
@@ -191,7 +191,7 @@ export async function rejectRegistration(req: Request, res: Response, next: Next
 export async function batchApproveRegistrations(req: Request, res: Response, next: NextFunction) {
   try {
     const { ids } = req.body;
-    const reviewerId = req.user?.userId;
+    const reviewerId = req.user?.id;
     const results: any[] = [];
     const errors: any[] = [];
     

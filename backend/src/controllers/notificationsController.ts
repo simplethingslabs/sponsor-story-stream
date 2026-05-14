@@ -6,7 +6,7 @@ import { formatPaginatedResponse } from '../utils/helpers';
 // Get notifications for current user
 export async function getNotifications(req: Request, res: Response, next: NextFunction) {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     const { page = 1, limit = 20, unread_only = false } = req.query;
     
     let whereClause = 'user_id = $1';
@@ -51,7 +51,7 @@ export async function getNotifications(req: Request, res: Response, next: NextFu
 export async function markNotificationRead(req: Request, res: Response, next: NextFunction) {
   try {
     const { id } = req.params;
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     
     const result = await pool.query(
       `UPDATE notifications 
@@ -74,7 +74,7 @@ export async function markNotificationRead(req: Request, res: Response, next: Ne
 // Mark all notifications as read
 export async function markAllNotificationsRead(req: Request, res: Response, next: NextFunction) {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     
     await pool.query(
       `UPDATE notifications SET read_at = NOW() WHERE user_id = $1 AND read_at IS NULL`,
@@ -91,7 +91,7 @@ export async function markAllNotificationsRead(req: Request, res: Response, next
 export async function deleteNotification(req: Request, res: Response, next: NextFunction) {
   try {
     const { id } = req.params;
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     
     const result = await pool.query(
       `DELETE FROM notifications WHERE id = $1 AND user_id = $2 RETURNING id`,

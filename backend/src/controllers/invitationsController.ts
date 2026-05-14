@@ -55,7 +55,7 @@ export async function getInvitations(req: Request, res: Response, next: NextFunc
 export async function sendInvitation(req: Request, res: Response, next: NextFunction) {
   try {
     const data = req.body as SendInvitationInput;
-    const invitedBy = req.user?.userId;
+    const invitedBy = req.user?.id;
     
     // Check if email already registered
     const existingUser = await pool.query(
@@ -232,7 +232,7 @@ export async function validateInvitation(req: Request, res: Response, next: Next
 export async function batchSendInvitations(req: Request, res: Response, next: NextFunction) {
   try {
     const { invitations } = req.body;
-    const invitedBy = req.user?.userId;
+    const invitedBy = req.user?.id;
     const results: any[] = [];
     const errors: any[] = [];
     

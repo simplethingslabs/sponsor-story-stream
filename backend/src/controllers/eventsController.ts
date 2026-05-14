@@ -86,7 +86,7 @@ export async function getEvent(req: Request, res: Response, next: NextFunction) 
 export async function createEvent(req: Request, res: Response, next: NextFunction) {
   try {
     const data = req.body as CreateEventInput;
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     const id = uuidv4();
     
     const client = await pool.connect();
@@ -231,7 +231,7 @@ export async function updateEvent(req: Request, res: Response, next: NextFunctio
 export async function deleteEvent(req: Request, res: Response, next: NextFunction) {
   try {
     const { id } = req.params;
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     
     const result = await pool.query(
       `UPDATE events 
@@ -278,7 +278,7 @@ export async function restoreEvent(req: Request, res: Response, next: NextFuncti
 export async function batchDeleteEvents(req: Request, res: Response, next: NextFunction) {
   try {
     const { ids } = req.body;
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     
     const result = await pool.query(
       `UPDATE events 
