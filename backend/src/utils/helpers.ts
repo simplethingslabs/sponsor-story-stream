@@ -202,7 +202,7 @@ export function buildPaginatedQuery(
 ) {
   const offset = (page - 1) * limit;
   return {
-    query: `${baseQuery} LIMIT $\{limit} OFFSET $\{offset}`,
+    query: `${baseQuery} LIMIT ${limit} OFFSET ${offset}`,
     offset,
   };
 }

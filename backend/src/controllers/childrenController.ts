@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../config/database';
 import { CreateChildInput, UpdateChildInput, ChildQueryInput } from '../schemas/child';
-import { buildPaginatedQuery, formatPaginatedResponse } from '../utils/helpers';
+import { formatPaginatedResponse } from '../utils/helpers';
 
 // Get all children with pagination and filters
 export async function getChildren(req: Request, res: Response, next: NextFunction) {
