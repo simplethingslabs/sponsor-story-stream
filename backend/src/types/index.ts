@@ -68,8 +68,12 @@ export interface ProgressReport {
   growth_narrative: string;
   activities: string;
   teacher_observations: string;
-  status: 'draft' | 'published';
+  status: 'draft' | 'pending_review' | 'needs_revision' | 'approved' | 'published';
   published_at?: Date;
+  submitted_at?: Date;
+  reviewed_by?: string;
+  reviewed_at?: Date;
+  feedback?: string;
   created_at: Date;
   updated_at: Date;
   deleted_at?: Date;

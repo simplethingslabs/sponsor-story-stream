@@ -27,7 +27,7 @@ export const createReportSchema = z.object({
     .min(10, 'Teacher observations must be at least 10 characters')
     .max(5000, 'Teacher observations must be less than 5000 characters')
     .transform(val => sanitizeString(val)),
-  status: z.enum(['draft', 'published']).default('draft'),
+  status: z.enum(['draft', 'pending_review']).default('draft'),
   media: z
     .array(
       z.object({
@@ -68,7 +68,7 @@ export const reportQuerySchema = z.object({
   teacher_id: z.string().uuid().optional(),
   quarter: z.enum(['Q1', 'Q2', 'Q3', 'Q4']).optional(),
   year: z.coerce.number().int().optional(),
-  status: z.enum(['draft', 'published', 'all']).default('all'),
+  status: z.enum(['draft', 'pending_review', 'needs_revision', 'approved', 'published', 'all']).default('all'),
   sort_by: z.enum(['created_at', 'updated_at', 'quarter', 'year', 'published_at']).default('created_at'),
   sort_order: z.enum(['asc', 'desc']).default('desc'),
   include_deleted: z.coerce.boolean().default(false),
