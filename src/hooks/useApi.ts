@@ -233,7 +233,7 @@ export function useRemoveSponsorship() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, end_date }: { id: string; end_date?: string }) => {
-      const response = await api.delete(`/sponsorships/${id}`);
+      const response = await api.delete(`/sponsorships/${id}`, end_date ? { end_date } : undefined);
       if (response.error) throw new Error(response.error);
       return response.data;
     },
