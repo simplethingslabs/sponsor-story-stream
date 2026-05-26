@@ -191,7 +191,7 @@
 ---
 
 ### BUG-14 — Orphaned `is_read` column
-**Status:** 🧪 Fixed — commit `adc0709` — pending migration run on Render
+**Status:** ✅ Fixed — commit `adc0709` — migration run on Render 2026-05-27
 **Priority:** Low — DB schema hygiene
 **Files:** `backend/migrations/007_drop_is_read_column.sql` (new), `backend/src/types/index.ts`
 **Changes:**
@@ -229,7 +229,7 @@
 | BUG-11 | `buildPaginatedQuery` escape | Backend | ✅ Fixed |
 | BUG-12 | `useRemoveSponsorship` drops `end_date` | Frontend | 🧪 Pending test |
 | BUG-13 | Missing `ClassroomMoment` type | Frontend | ✅ Fixed |
-| BUG-14 | Orphaned `is_read` column | Backend/DB | 🧪 Pending migration |
+| BUG-14 | Orphaned `is_read` column | Backend/DB | ✅ Fixed |
 | BUG-15 | No Cloudinary startup validation | Backend | 🧪 Pending test |
 | BUG-16 | Duplicate role-array parsing | Backend | 🧪 Pending test |
 | BUG-17 | Sponsor route URL mismatch | Frontend | 🧪 Pending test |
