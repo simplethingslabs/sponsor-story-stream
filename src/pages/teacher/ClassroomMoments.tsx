@@ -117,8 +117,8 @@ export default function ClassroomMoments() {
     );
   }
 
-  const approvedCount = moments.filter((m: any) => m.status === 'approved').length;
-  const pendingCount = moments.filter((m: any) => m.status === 'pending').length;
+  const approvedCount = moments.filter((m) => m.status === 'approved').length;
+  const pendingCount = moments.filter((m) => m.status === 'pending').length;
 
   return (
     <TeacherLayout>
@@ -243,7 +243,7 @@ export default function ClassroomMoments() {
         {/* Filter */}
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
-          <Select value={filterStatus} onValueChange={(v: any) => setFilterStatus(v)}>
+          <Select value={filterStatus} onValueChange={(v: 'all' | 'approved' | 'pending') => setFilterStatus(v)}>
             <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Moments</SelectItem>
@@ -255,7 +255,7 @@ export default function ClassroomMoments() {
 
         {/* Grid */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {moments.map((moment: any) => {
+          {moments.map((moment) => {
             const tagged = students.filter(s => moment.tagged_children?.includes(s.id));
             const event = events.find(e => e.id === moment.event_id);
 

@@ -10,6 +10,7 @@ import type {
   PendingRegistration,
   SponsorInvitation,
   SponsorStats,
+  ClassroomMoment,
   PaginatedResponse,
 } from '@/types';
 
@@ -880,12 +881,12 @@ export function useSaveAttendance() {
 }
 
 // ============ Moments Hooks ============
-export function useMoments(params?: Record<string, any>) {
+export function useMoments(params?: Record<string, string>) {
   return useQuery({
     queryKey: [...queryKeys.moments, params],
     queryFn: async () => {
       const queryString = params ? `?${new URLSearchParams(params).toString()}` : '';
-      const response = await api.get<{ data: any[] }>(`/moments${queryString}`);
+      const response = await api.get<{ data: ClassroomMoment[] }>(`/moments${queryString}`);
       if (response.error) throw new Error(response.error);
       return response.data!;
     },
@@ -902,7 +903,7 @@ export function useCreateMoment() {
       event_id?: string;
       tagged_children?: string[];
     }) => {
-      const response = await api.post<any>('/moments', data);
+      const response = await api.post<ClassroomMoment>('/moments', data);
       if (response.error) throw new Error(response.error);
       return response.data!;
     },

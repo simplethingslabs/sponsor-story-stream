@@ -187,6 +187,24 @@ export interface AuthState {
   isLoading: boolean;
 }
 
+// Classroom Moment Types
+export interface ClassroomMoment {
+  id: string;
+  /** 'image' or 'video' — matches the file uploaded to Cloudinary */
+  type: 'image' | 'video';
+  url: string;
+  caption: string;
+  /** 'pending' = awaiting admin approval; 'approved' = visible to sponsors */
+  status: 'pending' | 'approved';
+  /** IDs of children tagged in this moment */
+  tagged_children?: string[];
+  /** Optional school event this moment is linked to */
+  event_id?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
 // Sponsor Stats Types
 export interface SponsorStats {
   /** Number of children with an active sponsorship for this sponsor */
