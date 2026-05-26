@@ -113,7 +113,7 @@ export const createUserSchema = z.object({
     .max(20, 'Phone number must be less than 20 characters')
     .optional()
     .nullable(),
-  role: z.enum(['teacher', 'sponsor'], { required_error: 'Role must be teacher or sponsor' }),
+  role: z.enum(['teacher', 'sponsor', 'admin'], { required_error: 'Role must be teacher, sponsor, or admin' }),
 });
 
 // Types

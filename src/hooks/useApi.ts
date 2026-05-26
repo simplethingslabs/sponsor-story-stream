@@ -942,7 +942,7 @@ export function useTeachers() {
 export function useCreateUser() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { email: string; password: string; full_name: string; phone?: string; role: 'teacher' | 'sponsor' }) => {
+    mutationFn: async (data: { email: string; password: string; full_name: string; phone?: string; role: 'teacher' | 'sponsor' | 'admin' }) => {
       const response = await api.post<{ message: string; user: User }>('/auth/create-user', data);
       if (response.error) throw new Error(response.error);
       return response.data!;
@@ -950,9 +950,10 @@ export function useCreateUser() {
     onSuccess: (_, variables) => {
       if (variables.role === 'teacher') {
         queryClient.invalidateQueries({ queryKey: queryKeys.teachers });
-      } else {
+      } else if (variables.role === 'sponsor') {
         queryClient.invalidateQueries({ queryKey: queryKeys.sponsors });
       }
+      // admin: no dedicated list cache to invalidate
     },
   });
 }
