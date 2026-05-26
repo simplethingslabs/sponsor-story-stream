@@ -41,8 +41,15 @@ export const createReportSchema = z.object({
     .optional(),
 });
 
-// Update report schema
-export const updateReportSchema = createReportSchema.partial().omit({ child_id: true });
+// Update report schema — allows the full status lifecycle (admins can approve/publish)
+export const updateReportSchema = createReportSchema
+  .partial()
+  .omit({ child_id: true })
+  .extend({
+    status: z
+      .enum(['draft', 'pending_review', 'needs_revision', 'approved', 'published'])
+      .optional(),
+  });
 
 // Publish report schema
 export const publishReportSchema = z.object({
