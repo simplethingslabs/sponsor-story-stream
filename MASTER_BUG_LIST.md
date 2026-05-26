@@ -146,7 +146,7 @@
 ---
 
 ### BUG-10 — `useSponsorStats` field name mismatch
-**Status:** ✅ Fixed — commit `f86e13c`
+**Status:** 🧪 Fixed — commit `f86e13c` — pending test on Vercel
 **Files:** `src/types/index.ts`, `src/hooks/useApi.ts`, `src/pages/sponsor/SponsorHome.tsx`
 **Root cause:** Endpoint `GET /sponsors/stats` existed and worked. Frontend component accessed `statsData?.totalQuarters` and `statsData?.newReportsCount` — neither field exists in the backend response (which uses snake_case: `total_reports`, `recent_reports`, etc.). Both stats showed 0 permanently.
 **Changes:**
@@ -154,6 +154,7 @@
 - `useSponsorStats`: `api.get<any>` → `api.get<SponsorStats>` for compile-time safety
 - `SponsorHome.tsx`: `statsData?.totalQuarters` → `statsData?.total_reports`; `statsData?.newReportsCount` → `statsData?.recent_reports`
 **Test:** Login as sponsor → Home page shows non-zero "Quarters of Support" and "New Reports" stats
+**Pending test file:** [`Pending Test for BUG-10.md`](./Pending%20Test%20for%20BUG-10.md)
 
 ---
 
@@ -200,7 +201,7 @@
 | BUG-07 | `inactive` → `withdrawn` filter | Frontend | ⬜ |
 | BUG-08 | Admin role creation blocked | Frontend | ⬜ |
 | BUG-09 | Stale `ProgressReport.status` type | Backend | ✅ Fixed |
-| BUG-10 | `useSponsorStats` field name mismatch | Frontend | ✅ Fixed |
+| BUG-10 | `useSponsorStats` field name mismatch | Frontend | 🧪 Pending test |
 | BUG-11 | `buildPaginatedQuery` escape | Backend | ✅ Fixed |
 | BUG-12 | `useRemoveSponsorship` drops `end_date` | Frontend | ⬜ |
 | BUG-13 | Missing `ClassroomMoment` type | Frontend | ⬜ |
