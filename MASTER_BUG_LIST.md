@@ -137,11 +137,17 @@
 ---
 
 ### BUG-06 — Random data in ChildProgress charts
-**Status:** ⬜ Not fixed
+**Status:** ✅ Fixed — commit `5c01e90`
 **Priority:** Medium — misleading to sponsors
 **File:** `src/pages/sponsor/ChildProgress.tsx`
-**Notes:** Replace random chart data with real report field data or a clear placeholder state
-**Test:** Sponsor views child progress → no random/misleading numbers shown
+**Changes:**
+- Removed `generateProgressData()` (used `Math.random()` for fake attendance/participation/academic %; no numeric fields exist on `ProgressReport`)
+- Removed `skillsData` (hardcoded identical skill scores for every child)
+- Removed fabricated "Meet the Child" bio text (same generic text for every child)
+- Removed entire `recharts` import block (no longer needed)
+- Added "Latest Report Highlight" card showing real `growth_narrative` + `activities` from the most recent published report, with a "Read Full Report" button
+- "Meet the Child" now shows factual enrollment date + report count only
+**Test:** Sponsor views child progress → sees real teacher narrative instead of random numbers; page shows placeholder text if no reports yet
 
 ---
 
@@ -206,7 +212,7 @@
 | BUG-03 | (Unblocked by BUG-02) | Backend | — |
 | BUG-04 | Missing approve/requestRevision hooks | Full-stack | 🧪 Pending test |
 | BUG-05 | Pagination shape mismatch | Frontend | 🧪 Pending test |
-| BUG-06 | Random data in ChildProgress charts | Frontend | ⬜ |
+| BUG-06 | Random data in ChildProgress charts | Frontend | ✅ Fixed |
 | BUG-07 | `inactive` → `withdrawn` filter | Frontend | ✅ Fixed |
 | BUG-08 | Admin role creation blocked | Full-stack | ✅ Fixed |
 | BUG-09 | Stale `ProgressReport.status` type | Backend | ✅ Fixed |
