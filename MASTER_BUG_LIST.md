@@ -125,10 +125,14 @@
 ---
 
 ### BUG-08 — Admin role creation blocked by schema
-**Status:** ⬜ Not fixed
+**Status:** ✅ Fixed — commit `9500994`
 **Priority:** Medium
-**Files:** Backend schema (`z.enum(['teacher', 'sponsor'])` → include `'admin'`), `src/hooks/useApi.ts`
-**Test:** Create a new admin user via the UI → confirm `roles = ['admin']`
+**Files:** `backend/src/schemas/auth.ts`, `src/hooks/useApi.ts`
+**Changes:**
+- `createUserSchema.role`: `z.enum(['teacher','sponsor'])` → `z.enum(['teacher','sponsor','admin'])`; updated error message
+- `useCreateUser` hook: role type expanded to `'teacher' | 'sponsor' | 'admin'`; `onSuccess` uses explicit `else if` so creating an admin no longer incorrectly invalidates the sponsors cache
+- Route is behind `requireAdmin` so only super_admins can create admin accounts
+**Test:** POST `/auth/create-user` with `role: 'admin'` → 201 created; `user_roles` row has `role='admin'`
 
 ---
 
@@ -204,7 +208,7 @@
 | BUG-05 | Pagination shape mismatch | Frontend | 🧪 Pending test |
 | BUG-06 | Random data in ChildProgress charts | Frontend | ⬜ |
 | BUG-07 | `inactive` → `withdrawn` filter | Frontend | ✅ Fixed |
-| BUG-08 | Admin role creation blocked | Frontend | ⬜ |
+| BUG-08 | Admin role creation blocked | Full-stack | ✅ Fixed |
 | BUG-09 | Stale `ProgressReport.status` type | Backend | ✅ Fixed |
 | BUG-10 | `useSponsorStats` field name mismatch | Frontend | 🧪 Pending test |
 | BUG-11 | `buildPaginatedQuery` escape | Backend | ✅ Fixed |
