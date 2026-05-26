@@ -165,9 +165,13 @@ export default function SponsorsList() {
                 </Badge>
               )}
             </Button>
-            <Button onClick={() => navigate('/dashboard/sponsors/invite')}>
-              <Plus className="mr-2 h-4 w-4" />
+            <Button variant="outline" onClick={() => navigate('/dashboard/sponsors/invite')}>
+              <Mail className="mr-2 h-4 w-4" />
               Invite Sponsor
+            </Button>
+            <Button onClick={() => navigate('/dashboard/sponsors/new')}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Sponsor
             </Button>
           </div>
         </div>
