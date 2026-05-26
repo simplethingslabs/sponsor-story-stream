@@ -79,7 +79,7 @@ export default function ChildrenList() {
       label: 'Status',
       options: [
         { value: 'active', label: 'Active' },
-        { value: 'inactive', label: 'Inactive' },
+        { value: 'withdrawn', label: 'Withdrawn' },
         { value: 'graduated', label: 'Graduated' },
       ],
       placeholder: 'Status',
