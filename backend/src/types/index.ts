@@ -163,7 +163,7 @@ export interface Notification {
   title: string;
   message: string;
   link?: string;
-  is_read: boolean;
+  read_at?: Date;
   created_at: Date;
 }
 
