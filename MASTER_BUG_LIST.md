@@ -153,11 +153,14 @@
 ---
 
 ### BUG-12 — `useRemoveSponsorship` drops `end_date`
-**Status:** ⬜ Not fixed
+**Status:** ✅ Fixed — commit `dce474e`
 **Priority:** Medium — data integrity issue
-**File:** `src/hooks/useApi.ts`
-**Notes:** Switch from `api.delete` to `api.patch` or `api.put` to carry the body. Confirm backend route accepts body on termination endpoint.
-**Test:** End a sponsorship → confirm `end_date` saved in DB
+**Files:** `src/lib/api.ts`, `src/hooks/useApi.ts`
+**Root cause:** `api.delete()` accepted no body parameter, so `end_date` passed to `useRemoveSponsorship` was silently discarded. Backend controller already reads `req.body.end_date` and falls back to `NOW()` — no backend changes needed.
+**Changes:**
+- `api.delete()`: added optional `body?` parameter, JSON-stringified and forwarded (consistent with `post`, `put`, `patch`)
+- `useRemoveSponsorship`: passes `{ end_date }` as DELETE body when provided; omits body when `end_date` is undefined (preserving backend's `NOW()` fallback)
+**Test:** End a sponsorship with a specific `end_date` → confirm that exact date saved in DB (not `NOW()`)
 
 ---
 
@@ -219,7 +222,7 @@
 | BUG-09 | Stale `ProgressReport.status` type | Backend | ✅ Fixed |
 | BUG-10 | `useSponsorStats` field name mismatch | Frontend | 🧪 Pending test |
 | BUG-11 | `buildPaginatedQuery` escape | Backend | ✅ Fixed |
-| BUG-12 | `useRemoveSponsorship` drops `end_date` | Frontend | ⬜ |
+| BUG-12 | `useRemoveSponsorship` drops `end_date` | Frontend | ✅ Fixed |
 | BUG-13 | Missing `ClassroomMoment` type | Frontend | ⬜ |
 | BUG-14 | Orphaned `is_read` column | Backend/DB | 🧪 Pending migration |
 | BUG-15 | No Cloudinary startup validation | Backend | 🧪 Pending test |
