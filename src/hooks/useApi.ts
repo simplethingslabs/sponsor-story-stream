@@ -12,6 +12,31 @@ import type {
   PaginatedResponse,
 } from '@/types';
 
+// Internal type that matches the actual backend paginated response shape.
+// The backend wraps pagination metadata in a nested `pagination` object;
+// the frontend PaginatedResponse<T> type (and all components) expect a
+// flat shape with hasMore. normalizePagination() bridges the two.
+interface BackendPaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+function normalizePagination<T>(res: BackendPaginatedResponse<T>): PaginatedResponse<T> {
+  const { page, limit, total, totalPages } = res.pagination;
+  return {
+    data: res.data,
+    page,
+    limit,
+    total,
+    hasMore: page < totalPages,
+  };
+}
+
 // Query Keys
 export const queryKeys = {
   children: ['children'] as const,
@@ -48,9 +73,9 @@ export function useChildren(params?: Record<string, any>) {
     queryKey: [...queryKeys.children, params],
     queryFn: async () => {
       const queryString = params ? `?${new URLSearchParams(params).toString()}` : '';
-      const response = await api.get<PaginatedResponse<Child>>(`/children${queryString}`);
+      const response = await api.get<BackendPaginatedResponse<Child>>(`/children${queryString}`);
       if (response.error) throw new Error(response.error);
-      return response.data!;
+      return normalizePagination(response.data!);
     },
   });
 }
@@ -72,9 +97,9 @@ export function useMyChildren(params?: Record<string, any>) {
     queryKey: [...queryKeys.myChildren, params],
     queryFn: async () => {
       const queryString = params ? `?${new URLSearchParams(params).toString()}` : '';
-      const response = await api.get<PaginatedResponse<Child>>(`/children/my-children${queryString}`);
+      const response = await api.get<BackendPaginatedResponse<Child>>(`/children/my-children${queryString}`);
       if (response.error) throw new Error(response.error);
-      return response.data!;
+      return normalizePagination(response.data!);
     },
   });
 }
@@ -144,9 +169,9 @@ export function useSponsors(params?: Record<string, any>) {
     queryKey: [...queryKeys.sponsors, params],
     queryFn: async () => {
       const queryString = params ? `?${new URLSearchParams(params).toString()}` : '';
-      const response = await api.get<PaginatedResponse<User>>(`/sponsors${queryString}`);
+      const response = await api.get<BackendPaginatedResponse<User>>(`/sponsors${queryString}`);
       if (response.error) throw new Error(response.error);
-      return response.data!;
+      return normalizePagination(response.data!);
     },
   });
 }
@@ -180,9 +205,9 @@ export function useSponsorships(params?: Record<string, any>) {
     queryKey: [...queryKeys.sponsorships, params],
     queryFn: async () => {
       const queryString = params ? `?${new URLSearchParams(params).toString()}` : '';
-      const response = await api.get<PaginatedResponse<Sponsorship>>(`/sponsorships${queryString}`);
+      const response = await api.get<BackendPaginatedResponse<Sponsorship>>(`/sponsorships${queryString}`);
       if (response.error) throw new Error(response.error);
-      return response.data!;
+      return normalizePagination(response.data!);
     },
   });
 }
@@ -225,9 +250,9 @@ export function useReports(params?: Record<string, any>) {
     queryKey: [...queryKeys.reports, params],
     queryFn: async () => {
       const queryString = params ? `?${new URLSearchParams(params).toString()}` : '';
-      const response = await api.get<PaginatedResponse<ProgressReport>>(`/reports${queryString}`);
+      const response = await api.get<BackendPaginatedResponse<ProgressReport>>(`/reports${queryString}`);
       if (response.error) throw new Error(response.error);
-      return response.data!;
+      return normalizePagination(response.data!);
     },
   });
 }
@@ -249,9 +274,9 @@ export function useMyReports(params?: Record<string, any>) {
     queryKey: [...queryKeys.myReports, params],
     queryFn: async () => {
       const queryString = params ? `?${new URLSearchParams(params).toString()}` : '';
-      const response = await api.get<PaginatedResponse<ProgressReport>>(`/reports/my-reports${queryString}`);
+      const response = await api.get<BackendPaginatedResponse<ProgressReport>>(`/reports/my-reports${queryString}`);
       if (response.error) throw new Error(response.error);
-      return response.data!;
+      return normalizePagination(response.data!);
     },
   });
 }
@@ -321,9 +346,9 @@ export function useNewsletters(params?: Record<string, any>) {
     queryKey: [...queryKeys.newsletters, params],
     queryFn: async () => {
       const queryString = params ? `?${new URLSearchParams(params).toString()}` : '';
-      const response = await api.get<PaginatedResponse<Newsletter>>(`/newsletters${queryString}`);
+      const response = await api.get<BackendPaginatedResponse<Newsletter>>(`/newsletters${queryString}`);
       if (response.error) throw new Error(response.error);
-      return response.data!;
+      return normalizePagination(response.data!);
     },
   });
 }
@@ -375,9 +400,9 @@ export function useEvents(params?: Record<string, any>) {
     queryKey: [...queryKeys.events, params],
     queryFn: async () => {
       const queryString = params ? `?${new URLSearchParams(params).toString()}` : '';
-      const response = await api.get<PaginatedResponse<SchoolEvent>>(`/events${queryString}`);
+      const response = await api.get<BackendPaginatedResponse<SchoolEvent>>(`/events${queryString}`);
       if (response.error) throw new Error(response.error);
-      return response.data!;
+      return normalizePagination(response.data!);
     },
   });
 }
@@ -399,9 +424,9 @@ export function useUpcomingEvents(params?: Record<string, any>) {
     queryKey: [...queryKeys.upcomingEvents, params],
     queryFn: async () => {
       const queryString = params ? `?${new URLSearchParams(params).toString()}` : '';
-      const response = await api.get<PaginatedResponse<SchoolEvent>>(`/events/upcoming${queryString}`);
+      const response = await api.get<BackendPaginatedResponse<SchoolEvent>>(`/events/upcoming${queryString}`);
       if (response.error) throw new Error(response.error);
-      return response.data!;
+      return normalizePagination(response.data!);
     },
   });
 }
@@ -456,9 +481,9 @@ export function useInvitations(params?: Record<string, any>) {
     queryKey: [...queryKeys.invitations, params],
     queryFn: async () => {
       const queryString = params ? `?${new URLSearchParams(params).toString()}` : '';
-      const response = await api.get<PaginatedResponse<SponsorInvitation>>(`/invitations${queryString}`);
+      const response = await api.get<BackendPaginatedResponse<SponsorInvitation>>(`/invitations${queryString}`);
       if (response.error) throw new Error(response.error);
-      return response.data!;
+      return normalizePagination(response.data!);
     },
   });
 }
@@ -511,9 +536,9 @@ export function usePendingRegistrations(params?: Record<string, any>) {
     queryKey: [...queryKeys.pendingRegistrations, params],
     queryFn: async () => {
       const queryString = params ? `?${new URLSearchParams(params).toString()}` : '';
-      const response = await api.get<PaginatedResponse<PendingRegistration>>(`/registrations${queryString}`);
+      const response = await api.get<BackendPaginatedResponse<PendingRegistration>>(`/registrations${queryString}`);
       if (response.error) throw new Error(response.error);
-      return response.data!;
+      return normalizePagination(response.data!);
     },
   });
 }
@@ -555,9 +580,9 @@ export function useNotificationsQuery(params?: Record<string, any>, options?: { 
     queryKey: [...queryKeys.notifications, params],
     queryFn: async () => {
       const queryString = params ? `?${new URLSearchParams(params).toString()}` : '';
-      const response = await api.get<PaginatedResponse<Notification> & { unread_count: number }>(`/notifications${queryString}`);
+      const response = await api.get<BackendPaginatedResponse<Notification> & { unread_count: number }>(`/notifications${queryString}`);
       if (response.error) throw new Error(response.error);
-      return response.data!;
+      return { ...normalizePagination(response.data!), unread_count: response.data!.unread_count };
     },
     refetchInterval: options?.refetchInterval,
   });
@@ -611,9 +636,9 @@ export function useAuditLogs(params?: Record<string, any>) {
     queryKey: [...queryKeys.auditLogs, params],
     queryFn: async () => {
       const queryString = params ? `?${new URLSearchParams(params).toString()}` : '';
-      const response = await api.get<PaginatedResponse<any>>(`/audit${queryString}`);
+      const response = await api.get<BackendPaginatedResponse<any>>(`/audit${queryString}`);
       if (response.error) throw new Error(response.error);
-      return response.data!;
+      return normalizePagination(response.data!);
     },
   });
 }
@@ -704,9 +729,9 @@ export function usePayments(params?: Record<string, any>) {
     queryKey: [...queryKeys.payments, params],
     queryFn: async () => {
       const queryString = params ? `?${new URLSearchParams(params).toString()}` : '';
-      const response = await api.get<PaginatedResponse<Payment & { sponsor_name: string; child_name: string }>>(`/payments${queryString}`);
+      const response = await api.get<BackendPaginatedResponse<Payment & { sponsor_name: string; child_name: string }>>(`/payments${queryString}`);
       if (response.error) throw new Error(response.error);
-      return response.data!;
+      return normalizePagination(response.data!);
     },
   });
 }
