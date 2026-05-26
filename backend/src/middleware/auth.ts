@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { query } from '../config/database';
 import { AuthenticatedRequest, JWTPayload, UserPublic, User } from '../types';
+import { parsePostgresArray } from '../utils/helpers';
 
 if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET environment variable is required');
@@ -53,10 +54,7 @@ export async function authenticate(
     
     const user = rows[0];
     
-    // Parse PostgreSQL array string to JS array
-    if (typeof user.roles === 'string') {
-      user.roles = (user.roles as string).replace(/[{}]/g, '').split(',').filter(Boolean) as any;
-    }
+    user.roles = parsePostgresArray(user.roles) as any;
     
     if (!user.is_active) {
       res.status(401).json({

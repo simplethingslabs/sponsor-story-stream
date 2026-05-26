@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import pool from '../config/database';
 import { getResendClient, emailConfig, verifyResendConfig } from '../config/resend';
 import { LoginInput, RegisterInput, ForgotPasswordInput, ResetPasswordInput, RefreshTokenInput, CreateUserInput } from '../schemas/auth';
+import { parsePostgresArray } from '../utils/helpers';
 
 if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET environment variable is required');
@@ -48,11 +49,8 @@ export async function login(req: Request, res: Response, next: NextFunction) {
     
     const user = userResult.rows[0];
     
-    // Parse PostgreSQL array string to JS array
-    if (typeof user.roles === 'string') {
-      user.roles = user.roles.replace(/[{}]/g, '').split(',').filter(Boolean);
-    }
-    
+    user.roles = parsePostgresArray(user.roles);
+
     // Check password
     const validPassword = await bcrypt.compare(password, user.password_hash);
     if (!validPassword) {
@@ -336,7 +334,7 @@ export async function refreshToken(req: Request, res: Response, next: NextFuncti
     }
     
     const { user_id, roles: rawRoles } = tokenResult.rows[0];
-    const roles = typeof rawRoles === 'string' ? rawRoles.replace(/[{}]/g, '').split(',').filter(Boolean) : rawRoles;
+    const roles = parsePostgresArray(rawRoles);
     
     // Delete old refresh token
     await pool.query('DELETE FROM refresh_tokens WHERE token = $1', [refresh_token]);
@@ -396,11 +394,8 @@ export async function getCurrentUser(req: Request, res: Response, next: NextFunc
     }
     
     const userData = result.rows[0];
-    // Parse PostgreSQL array string to JS array
-    if (typeof userData.roles === 'string') {
-      userData.roles = userData.roles.replace(/[{}]/g, '').split(',').filter(Boolean);
-    }
-    
+    userData.roles = parsePostgresArray(userData.roles);
+
     res.json(userData);
   } catch (error) {
     next(error);

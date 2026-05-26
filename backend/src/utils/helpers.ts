@@ -194,6 +194,16 @@ export function formatPaginatedResponse<T>(
   };
 }
 
+// Parse a PostgreSQL array_agg result to a plain JS string array.
+// The pg driver usually returns a real array, but falls back to a
+// "{val1,val2}" string in some edge cases (e.g. empty arrays, older
+// driver versions). This normalises both forms.
+export function parsePostgresArray(value: string | string[] | null | undefined): string[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.filter(Boolean);
+  return value.replace(/[{}]/g, '').split(',').filter(Boolean);
+}
+
 // Build paginated query helper
 export function buildPaginatedQuery(
   baseQuery: string,
