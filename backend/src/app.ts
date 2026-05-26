@@ -9,9 +9,11 @@ import { rateLimiter } from './middleware/rateLimiter';
 import { checkConnection } from './config/database';
 import { verifyCloudinaryConfig } from './config/cloudinary';
 import { verifyResendConfig } from './config/resend';
+import { validateEnv } from './config/env';
 
-// Load environment variables
+// Load environment variables then validate immediately
 dotenv.config();
+validateEnv();
 
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
@@ -110,16 +112,6 @@ async function startServer() {
     if (!dbConnected) {
       console.error('❌ Failed to connect to database');
       process.exit(1);
-    }
-    
-    // Verify Cloudinary configuration
-    if (!verifyCloudinaryConfig()) {
-      console.warn('⚠️ Cloudinary not configured - file uploads will fail');
-    }
-    
-    // Verify Resend configuration
-    if (!verifyResendConfig()) {
-      console.warn('⚠️ Resend not configured - emails will not be sent');
     }
     
     app.listen(PORT, () => {
