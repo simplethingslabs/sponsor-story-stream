@@ -326,6 +326,36 @@ export function usePublishReport() {
   });
 }
 
+export function useApproveReport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.post<ProgressReport>(`/reports/${id}/approve`, {});
+      if (response.error) throw new Error(response.error);
+      return response.data!;
+    },
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.reports });
+      queryClient.invalidateQueries({ queryKey: queryKeys.report(id) });
+    },
+  });
+}
+
+export function useRequestRevision() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, feedback }: { id: string; feedback: string }) => {
+      const response = await api.post<ProgressReport>(`/reports/${id}/request-revision`, { feedback });
+      if (response.error) throw new Error(response.error);
+      return response.data!;
+    },
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.reports });
+      queryClient.invalidateQueries({ queryKey: queryKeys.report(id) });
+    },
+  });
+}
+
 export function useDeleteReport() {
   const queryClient = useQueryClient();
   return useMutation({

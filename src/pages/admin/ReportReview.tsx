@@ -31,7 +31,7 @@ import {
   RotateCcw,
   Users,
 } from 'lucide-react';
-import { useReports, useChildren, useUpdateReport, usePublishReport } from '@/hooks/useApi';
+import { useReports, useChildren, useApproveReport, useRequestRevision, usePublishReport } from '@/hooks/useApi';
 import { useToast } from '@/hooks/use-toast';
 import type { ProgressReport, ReportStatus } from '@/types';
 
@@ -81,7 +81,8 @@ export default function ReportReview() {
   // Use real API hooks
   const { data: reportsData, isLoading: reportsLoading } = useReports();
   const { data: childrenData, isLoading: childrenLoading } = useChildren();
-  const updateReport = useUpdateReport();
+  const approveReport = useApproveReport();
+  const requestRevision = useRequestRevision();
   const publishReport = usePublishReport();
   
   const reports = reportsData?.data || [];
@@ -154,10 +155,7 @@ export default function ReportReview() {
   const handleApprove = async (reportId: string) => {
     setIsSubmitting(true);
     try {
-      await updateReport.mutateAsync({
-        id: reportId,
-        data: { status: 'approved' },
-      });
+      await approveReport.mutateAsync(reportId);
       toast({ title: 'Report approved', description: 'The report is ready for publishing.' });
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to approve report', variant: 'destructive' });
@@ -169,9 +167,7 @@ export default function ReportReview() {
     setIsSubmitting(true);
     try {
       await Promise.all(
-        selectedReports.map(reportId =>
-          updateReport.mutateAsync({ id: reportId, data: { status: 'approved' } })
-        )
+        selectedReports.map(reportId => approveReport.mutateAsync(reportId))
       );
       toast({ 
         title: 'Reports approved', 
@@ -205,13 +201,10 @@ export default function ReportReview() {
 
   const handleRequestRevision = async () => {
     if (!currentReport || !feedback.trim()) return;
-    
+
     setIsSubmitting(true);
     try {
-      await updateReport.mutateAsync({
-        id: currentReport.id,
-        data: { status: 'needs_revision', feedback },
-      });
+      await requestRevision.mutateAsync({ id: currentReport.id, feedback });
       toast({ 
         title: 'Revision requested', 
         description: 'Teacher has been notified to improve the report.' 
