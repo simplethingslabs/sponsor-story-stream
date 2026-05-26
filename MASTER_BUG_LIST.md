@@ -137,7 +137,7 @@
 ---
 
 ### BUG-06 — Random data in ChildProgress charts
-**Status:** ✅ Fixed — commit `5c01e90`
+**Status:** 🧪 Fixed — commit `5c01e90` — pending test on Vercel
 **Priority:** Medium — misleading to sponsors
 **File:** `src/pages/sponsor/ChildProgress.tsx`
 **Changes:**
@@ -148,6 +148,7 @@
 - Added "Latest Report Highlight" card showing real `growth_narrative` + `activities` from the most recent published report, with a "Read Full Report" button
 - "Meet the Child" now shows factual enrollment date + report count only
 **Test:** Sponsor views child progress → sees real teacher narrative instead of random numbers; page shows placeholder text if no reports yet
+**Pending test file:** [`Pending Test for BUG-06.md`](./Pending%20Test%20for%20BUG-06.md)
 
 ---
 
@@ -212,7 +213,7 @@
 | BUG-03 | (Unblocked by BUG-02) | Backend | — |
 | BUG-04 | Missing approve/requestRevision hooks | Full-stack | 🧪 Pending test |
 | BUG-05 | Pagination shape mismatch | Frontend | 🧪 Pending test |
-| BUG-06 | Random data in ChildProgress charts | Frontend | ✅ Fixed |
+| BUG-06 | Random data in ChildProgress charts | Frontend | 🧪 Pending test |
 | BUG-07 | `inactive` → `withdrawn` filter | Frontend | ✅ Fixed |
 | BUG-08 | Admin role creation blocked | Full-stack | ✅ Fixed |
 | BUG-09 | Stale `ProgressReport.status` type | Backend | ✅ Fixed |
