@@ -187,6 +187,20 @@ export interface AuthState {
   isLoading: boolean;
 }
 
+// Sponsor Stats Types
+export interface SponsorStats {
+  /** Number of children with an active sponsorship for this sponsor */
+  active_children: number;
+  /** Total published progress reports across all sponsored children */
+  total_reports: number;
+  /** Published reports created in the last 30 days */
+  recent_reports: number;
+  /** Total newsletters published by the school */
+  total_newsletters: number;
+  /** Upcoming school events (event_date > NOW()) */
+  upcoming_events: number;
+}
+
 // Notification Types
 export type NotificationType = 'report' | 'newsletter' | 'event' | 'sponsorship' | 'system';
 

@@ -32,9 +32,11 @@ export default function SponsorHome() {
   const sponsoredChildren = childrenData?.data || [];
   const recentEvents = eventsData?.data || [];
 
-  // Stats from API or calculate from children
-  const totalQuarters = statsData?.totalQuarters || 0;
-  const newReportsCount = statsData?.newReportsCount || 0;
+  // Stats from API — field names match the backend GET /sponsors/stats response.
+  // total_reports  = total published quarterly reports (≈ quarters of support)
+  // recent_reports = reports published in the last 30 days (= "new reports")
+  const totalQuarters = statsData?.total_reports ?? 0;
+  const newReportsCount = statsData?.recent_reports ?? 0;
 
   const isLoading = childrenLoading || statsLoading;
 

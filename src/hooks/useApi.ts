@@ -9,6 +9,7 @@ import type {
   SchoolEvent,
   PendingRegistration,
   SponsorInvitation,
+  SponsorStats,
   PaginatedResponse,
 } from '@/types';
 
@@ -192,7 +193,7 @@ export function useSponsorStats() {
   return useQuery({
     queryKey: queryKeys.sponsorStats,
     queryFn: async () => {
-      const response = await api.get<any>('/sponsors/stats');
+      const response = await api.get<SponsorStats>('/sponsors/stats');
       if (response.error) throw new Error(response.error);
       return response.data!;
     },
