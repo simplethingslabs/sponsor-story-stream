@@ -110,12 +110,16 @@
 
 ---
 
-### BUG-04 — Missing frontend hooks for approve/requestRevision
-**Status:** ⬜ Not fixed
+### BUG-04 — Missing approve/requestRevision hooks and backend routes
+**Status:** ✅ Fixed — commit `f4b599d`
 **Priority:** Medium
-**File:** `src/hooks/useApi.ts`
-**Notes:** Add `useApproveReport` and `useRequestRevision` hooks
-**Test:** Hooks exist and can be called from report detail page
+**Files:** `backend/src/routes/reports.ts`, `src/hooks/useApi.ts`, `src/pages/admin/ReportReview.tsx`
+**Root cause:** Controller functions `approveReport()` and `requestRevision()` existed (with notification logic) but were never wired into the routes file. Frontend worked around this by calling `useUpdateReport()` with a status patch — which changed the status but skipped notifications and reviewer tracking.
+**Changes:**
+- Backend: added `POST /reports/:id/approve` and `POST /reports/:id/request-revision` routes (admin/super_admin only)
+- Frontend: added `useApproveReport()` and `useRequestRevision()` hooks
+- `ReportReview.tsx`: replaced `useUpdateReport()` workarounds with the new dedicated hooks in `handleApprove`, `handleBulkApprove`, and `handleRequestRevision`
+**Test:** Admin approves/requests revision on a report → correct notification sent to teacher; `reviewed_by` / `reviewed_at` / `feedback` fields populated in DB
 
 ---
 
@@ -195,7 +199,7 @@
 | BUG-01 | Notification type constants | Backend | ✅ Fixed |
 | BUG-02 | `req.user?.userId` → `req.user?.id` | Backend | ✅ Fixed |
 | BUG-03 | (Unblocked by BUG-02) | Backend | — |
-| BUG-04 | Missing approve/requestRevision hooks | Frontend | ⬜ |
+| BUG-04 | Missing approve/requestRevision hooks | Full-stack | ✅ Fixed |
 | BUG-05 | Pagination shape mismatch | Frontend | 🧪 Pending test |
 | BUG-06 | Random data in ChildProgress charts | Frontend | ⬜ |
 | BUG-07 | `inactive` → `withdrawn` filter | Frontend | ✅ Fixed |
