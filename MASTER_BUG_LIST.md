@@ -179,10 +179,14 @@
 ---
 
 ### BUG-13 — Missing `ClassroomMoment` type
-**Status:** ⬜ Not fixed
+**Status:** ✅ Fixed — commit `c4c8a5c`
 **Priority:** Low — pure type addition, no runtime risk
-**File:** `src/types/index.ts`
-**Notes:** Define missing interface
+**Files:** `src/types/index.ts`, `src/hooks/useApi.ts`, `src/pages/teacher/ClassroomMoments.tsx`
+**Changes:**
+- Added `ClassroomMoment` interface to `src/types/index.ts` with all fields used by the component (`id`, `type`, `url`, `caption`, `status`, `tagged_children`, `event_id`, `created_by`, `created_at`, `updated_at`)
+- `useMoments`: typed from `{ data: any[] }` → `{ data: ClassroomMoment[] }`; params tightened from `Record<string,any>` → `Record<string,string>`
+- `useCreateMoment`: typed from `api.post<any>` → `api.post<ClassroomMoment>`
+- `ClassroomMoments.tsx`: removed all `(m: any)`, `(moment: any)` annotations; `filterStatus` onValueChange given explicit union type
 
 ---
 
@@ -224,7 +228,7 @@
 | BUG-10 | `useSponsorStats` field name mismatch | Frontend | 🧪 Pending test |
 | BUG-11 | `buildPaginatedQuery` escape | Backend | ✅ Fixed |
 | BUG-12 | `useRemoveSponsorship` drops `end_date` | Frontend | 🧪 Pending test |
-| BUG-13 | Missing `ClassroomMoment` type | Frontend | ⬜ |
+| BUG-13 | Missing `ClassroomMoment` type | Frontend | ✅ Fixed |
 | BUG-14 | Orphaned `is_read` column | Backend/DB | 🧪 Pending migration |
 | BUG-15 | No Cloudinary startup validation | Backend | 🧪 Pending test |
 | BUG-16 | Duplicate role-array parsing | Backend | 🧪 Pending test |
@@ -233,4 +237,4 @@
 
 ---
 
-*Last updated: 2026-05-27 — Session 3*
+*Last updated: 2026-05-27 — Session 3 (all 18 bugs resolved)*
