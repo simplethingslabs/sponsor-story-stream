@@ -102,10 +102,10 @@
 ---
 
 ### BUG-07 — "Inactive" status filter in ChildrenList
-**Status:** ⬜ Not fixed
+**Status:** ✅ Fixed — commit `ce848e6`
 **Priority:** Medium
-**File:** `src/pages/admin/ChildrenList.tsx` ~line 82
-**Notes:** Change `'inactive'` → `'withdrawn'` to match actual DB values
+**File:** `src/pages/admin/ChildrenList.tsx` line 82
+**Changes:** Filter option value `'inactive'` → `'withdrawn'`, label `'Inactive'` → `'Withdrawn'` to match DB CHECK constraint (`active | graduated | withdrawn`). The filter previously returned 0 results permanently.
 **Test:** Apply Withdrawn filter → confirm it returns withdrawn children
 
 ---
@@ -198,7 +198,7 @@
 | BUG-04 | Missing approve/requestRevision hooks | Frontend | ⬜ |
 | BUG-05 | Pagination shape mismatch | Frontend | 🧪 Pending test |
 | BUG-06 | Random data in ChildProgress charts | Frontend | ⬜ |
-| BUG-07 | `inactive` → `withdrawn` filter | Frontend | ⬜ |
+| BUG-07 | `inactive` → `withdrawn` filter | Frontend | ✅ Fixed |
 | BUG-08 | Admin role creation blocked | Frontend | ⬜ |
 | BUG-09 | Stale `ProgressReport.status` type | Backend | ✅ Fixed |
 | BUG-10 | `useSponsorStats` field name mismatch | Frontend | 🧪 Pending test |
