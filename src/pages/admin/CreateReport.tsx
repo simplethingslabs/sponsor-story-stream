@@ -122,20 +122,19 @@ export default function CreateReport() {
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div className="space-y-2">
                     <Label>Select Child</Label>
-                    <Select onValueChange={(value) => setValue('child_id', value)}>
+                    <Select
+                      disabled={isLoadingChildren}
+                      onValueChange={(value) => setValue('child_id', value)}
+                    >
                       <SelectTrigger>
-                        <SelectValue placeholder="Choose a child" />
+                        <SelectValue placeholder={isLoadingChildren ? 'Loading...' : 'Choose a child'} />
                       </SelectTrigger>
                       <SelectContent>
-                        {isLoadingChildren ? (
-                          <SelectItem value="" disabled>Loading...</SelectItem>
-                        ) : (
-                          children.map((child) => (
-                            <SelectItem key={child.id} value={child.id}>
-                              {child.first_name} {child.last_name}
-                            </SelectItem>
-                          ))
-                        )}
+                        {children.map((child) => (
+                          <SelectItem key={child.id} value={child.id}>
+                            {child.first_name} {child.last_name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     {errors.child_id && (

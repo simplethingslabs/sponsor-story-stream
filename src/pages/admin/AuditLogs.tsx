@@ -152,12 +152,12 @@ export default function AuditLogs() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-4">
-            <Select value={tableFilter} onValueChange={(v) => updateFilter('table', v)}>
+            <Select value={tableFilter || 'all'} onValueChange={(v) => updateFilter('table', v === 'all' ? '' : v)}>
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="All Tables" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Tables</SelectItem>
+                <SelectItem value="all">All Tables</SelectItem>
                 <SelectItem value="children">Children</SelectItem>
                 <SelectItem value="progress_reports">Reports</SelectItem>
                 <SelectItem value="events">Events</SelectItem>
@@ -166,13 +166,13 @@ export default function AuditLogs() {
                 <SelectItem value="users">Users</SelectItem>
               </SelectContent>
             </Select>
-            
-            <Select value={actionFilter} onValueChange={(v) => updateFilter('action', v)}>
+
+            <Select value={actionFilter || 'all'} onValueChange={(v) => updateFilter('action', v === 'all' ? '' : v)}>
               <SelectTrigger className="w-32">
                 <SelectValue placeholder="All Actions" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Actions</SelectItem>
+                <SelectItem value="all">All Actions</SelectItem>
                 <SelectItem value="INSERT">Create</SelectItem>
                 <SelectItem value="UPDATE">Update</SelectItem>
                 <SelectItem value="DELETE">Delete</SelectItem>
