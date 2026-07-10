@@ -2,7 +2,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { useReport, useChild } from '@/hooks/useApi';
+import { useAuth } from '@/contexts/AuthContext';
 import { SponsorLayout } from '@/components/layouts/SponsorLayout';
+import { AdminLayout } from '@/components/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -10,12 +12,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Calendar, TrendingUp, Activity, Eye, Image, Download } from 'lucide-react';
 
 export default function ReportDetail() {
-  const { reportId } = useParams();
+  const { reportId, id } = useParams();
   const navigate = useNavigate();
   const printRef = useRef<HTMLDivElement>(null);
+  const { hasAnyRole } = useAuth();
+  const isAdmin = hasAnyRole(['super_admin', 'admin', 'teacher']);
+  const Layout = isAdmin ? AdminLayout : SponsorLayout;
 
   // Use real API hooks
-  const { data: report, isLoading: reportLoading } = useReport(reportId || '');
+  const { data: report, isLoading: reportLoading } = useReport(reportId || id || '');
   const { data: child, isLoading: childLoading } = useChild(report?.child_id || '');
 
   const isLoading = reportLoading || (report && childLoading);
@@ -29,27 +34,27 @@ export default function ReportDetail() {
 
   if (isLoading) {
     return (
-      <SponsorLayout>
+      <Layout>
         <div className="mx-auto max-w-3xl space-y-6">
           <Skeleton className="h-10 w-48" />
           <Skeleton className="h-64 w-full" />
           <Skeleton className="h-48 w-full" />
           <Skeleton className="h-48 w-full" />
         </div>
-      </SponsorLayout>
+      </Layout>
     );
   }
 
   if (!report || !child) {
     return (
-      <SponsorLayout>
+      <Layout>
         <div className="flex flex-col items-center justify-center py-12">
           <p className="text-lg text-muted-foreground">Report not found</p>
           <Button className="mt-4" onClick={() => navigate(-1)}>
             Go Back
           </Button>
         </div>
-      </SponsorLayout>
+      </Layout>
     );
   }
 
@@ -61,17 +66,19 @@ export default function ReportDetail() {
   };
 
   return (
-    <SponsorLayout>
+    <Layout>
       <div className="mx-auto max-w-3xl space-y-6">
         {/* Action Bar */}
         <div className="flex items-center justify-between">
           <Button
             variant="ghost"
             className="gap-2"
-            onClick={() => navigate(`/sponsor/children/${child.id}`)}
+            onClick={() =>
+              isAdmin ? navigate('/dashboard/reports') : navigate(`/sponsor/children/${child.id}`)
+            }
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to {child.first_name}'s Profile
+            {isAdmin ? 'Back to Reports' : `Back to ${child.first_name}'s Profile`}
           </Button>
           
           <Button
@@ -173,6 +180,6 @@ export default function ReportDetail() {
           </div>
         </div>
       </div>
-    </SponsorLayout>
+    </Layout>
   );
 }
