@@ -212,6 +212,21 @@
 
 ---
 
+### BUG-19 — "Publish Report" in CreateReport tried to create with `status: 'published'`
+**Status:** 🧪 Fixed — pending test on Vercel
+**Found:** 2026-07-11, reported by user as a validation error when publishing a report from Create Report
+**Priority:** High — publish workflow was completely broken from the create-report screen
+**File:** `src/pages/admin/CreateReport.tsx`
+**Root cause:** `onSubmit` always called `createReport.mutateAsync({ ..., status: publish ? 'published' : 'draft' })` — i.e. it tried to `POST /reports` directly with `status: 'published'`. The backend's `createReportSchema` (`backend/src/schemas/report.ts` line 30) only allows `status: 'draft' | 'pending_review'` on create, so this always failed with a 400. If "Save as Draft" had already been clicked first, a second click on "Publish Report" created a second row for the same `(child_id, quarter, year)`, tripping the DB's unique constraint and surfacing an additional 409 — on top of the 400 from the invalid status. A working dedicated endpoint (`POST /reports/:id/publish`, wrapped by `usePublishReport()` in `src/hooks/useApi.ts`) already existed but was never called from this screen.
+**Changes:**
+- `CreateReport.tsx`: `onSubmit` now always creates the report with `status: 'draft'`, then — only when `publish === true` — calls `publishReport.mutateAsync({ id: created.id })` using the newly created report's id.
+- `isPending` now also reflects `publishReport.isPending` so the button disables through both steps.
+**Learning:** When an entity has a dedicated state-transition endpoint (e.g. `/publish`, `/approve`), don't fold that transition into the generic create/update payload — the create/update schema is deliberately narrower than the full status lifecycle (see BUG-18 for the same pattern on the backend side). Always check `src/hooks/useApi.ts` for an existing hook before adding a new status value to a create call.
+**Test:** Create a new report and click "Publish Report" directly (no prior draft save) → report is created and published in one flow, sponsors notified, no 400/409 in the console.
+**Pending test file:** [`Pending Test for BUG-19.md`](./Pending%20Test%20for%20BUG-19.md)
+
+---
+
 ## Summary Table
 
 | Bug | Description | Phase | Status |
@@ -234,7 +249,8 @@
 | BUG-16 | Duplicate role-array parsing | Backend | 🧪 Pending test |
 | BUG-17 | Sponsor route URL mismatch | Frontend | 🧪 Pending test |
 | BUG-18 | `updateReportSchema` status too narrow | Backend | ✅ Fixed |
+| BUG-19 | Publish flow created report with invalid status | Frontend | 🧪 Pending test |
 
 ---
 
-*Last updated: 2026-05-27 — Session 3 (all 18 bugs resolved)*
+*Last updated: 2026-07-11 — Session 4 (BUG-19 found & fixed)*

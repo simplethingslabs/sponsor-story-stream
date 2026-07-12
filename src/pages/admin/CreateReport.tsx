@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Save, Send, Loader2 } from 'lucide-react';
-import { useChildren, useCreateReport } from '@/hooks/useApi';
+import { useChildren, useCreateReport, usePublishReport } from '@/hooks/useApi';
 
 const reportSchema = z.object({
   child_id: z.string().min(1, 'Please select a child'),
@@ -37,6 +37,7 @@ export default function CreateReport() {
   const { toast } = useToast();
   const { data: childrenData, isLoading: isLoadingChildren } = useChildren({ status: 'active' });
   const createReport = useCreateReport();
+  const publishReport = usePublishReport();
   const [isPublishing, setIsPublishing] = useState(false);
 
   const children = childrenData?.data || [];
@@ -59,7 +60,7 @@ export default function CreateReport() {
     if (publish) setIsPublishing(true);
     
     try {
-      await createReport.mutateAsync({
+      const created = await createReport.mutateAsync({
         child_id: data.child_id,
         quarter: data.quarter,
         year: data.year,
@@ -67,9 +68,13 @@ export default function CreateReport() {
         activities: data.activities,
         teacher_observations: data.teacher_observations,
         teacher_id: user?.id || 'teacher-1',
-        status: publish ? 'published' : 'draft',
-        published_at: publish ? new Date().toISOString() : undefined,
+        status: 'draft',
       });
+
+      if (publish) {
+        await publishReport.mutateAsync({ id: created.id });
+      }
+
       toast({
         title: 'Success',
         description: publish
@@ -88,7 +93,7 @@ export default function CreateReport() {
     }
   };
 
-  const isPending = createReport.isPending;
+  const isPending = createReport.isPending || publishReport.isPending;
 
   return (
     <AdminLayout>
