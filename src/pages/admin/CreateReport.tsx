@@ -33,12 +33,13 @@ type ReportFormData = z.infer<typeof reportSchema>;
 
 export default function CreateReport() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, hasAnyRole } = useAuth();
+  const canPublishDirectly = hasAnyRole(['super_admin', 'admin']);
   const { toast } = useToast();
   const { data: childrenData, isLoading: isLoadingChildren } = useChildren({ status: 'active' });
   const createReport = useCreateReport();
   const publishReport = usePublishReport();
-  const [isPublishing, setIsPublishing] = useState(false);
+  const [isSubmittingFinal, setIsSubmittingFinal] = useState(false);
 
   const children = childrenData?.data || [];
 
@@ -56,9 +57,9 @@ export default function CreateReport() {
     },
   });
 
-  const onSubmit = async (data: ReportFormData, publish: boolean = false) => {
-    if (publish) setIsPublishing(true);
-    
+  const onSubmit = async (data: ReportFormData, action: 'draft' | 'submit' | 'publish' = 'draft') => {
+    if (action !== 'draft') setIsSubmittingFinal(true);
+
     try {
       const created = await createReport.mutateAsync({
         child_id: data.child_id,
@@ -68,19 +69,20 @@ export default function CreateReport() {
         activities: data.activities,
         teacher_observations: data.teacher_observations,
         teacher_id: user?.id || 'teacher-1',
-        status: 'draft',
+        status: action === 'submit' ? 'pending_review' : 'draft',
       });
 
-      if (publish) {
+      if (action === 'publish') {
         await publishReport.mutateAsync({ id: created.id });
       }
 
-      toast({
-        title: 'Success',
-        description: publish
-          ? 'Report has been published successfully.'
-          : 'Report has been saved as draft.',
-      });
+      const descriptions: Record<typeof action, string> = {
+        draft: 'Report has been saved as draft.',
+        submit: 'Report submitted for review. An admin will approve it before it publishes.',
+        publish: 'Report has been published successfully.',
+      };
+
+      toast({ title: 'Success', description: descriptions[action] });
       navigate('/dashboard/reports');
     } catch (error) {
       toast({
@@ -89,7 +91,7 @@ export default function CreateReport() {
         variant: 'destructive',
       });
     } finally {
-      setIsPublishing(false);
+      setIsSubmittingFinal(false);
     }
   };
 
@@ -116,7 +118,7 @@ export default function CreateReport() {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit((data) => onSubmit(data, false))}>
+        <form onSubmit={handleSubmit((data) => onSubmit(data, 'draft'))}>
           <div className="space-y-6">
             {/* Child & Period Selection */}
             <Card>
@@ -258,7 +260,7 @@ export default function CreateReport() {
                 Cancel
               </Button>
               <Button type="submit" variant="secondary" disabled={isPending}>
-                {isPending && !isPublishing ? (
+                {isPending && !isSubmittingFinal ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <Save className="mr-2 h-4 w-4" />
@@ -268,14 +270,14 @@ export default function CreateReport() {
               <Button
                 type="button"
                 disabled={isPending}
-                onClick={handleSubmit((data) => onSubmit(data, true))}
+                onClick={handleSubmit((data) => onSubmit(data, canPublishDirectly ? 'publish' : 'submit'))}
               >
-                {isPublishing ? (
+                {isSubmittingFinal ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <Send className="mr-2 h-4 w-4" />
                 )}
-                Publish Report
+                {canPublishDirectly ? 'Publish Report' : 'Submit for Review'}
               </Button>
             </div>
           </div>

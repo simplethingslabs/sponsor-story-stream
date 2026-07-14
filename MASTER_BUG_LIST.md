@@ -227,6 +227,24 @@
 
 ---
 
+### BUG-20 — Teachers could publish reports directly, bypassing admin review
+**Status:** 🧪 Fixed — pending test on Vercel
+**Found:** 2026-07-13, user noticed published reports never passed through Pending Approval
+**Priority:** High — defeats the purpose of the review/approval workflow for teacher-authored reports
+**File:** `src/pages/admin/CreateReport.tsx` (shared by `/dashboard/reports/new` and `/teacher/reports/new`, see `src/App.tsx`)
+**Root cause:** A full review pipeline already exists (`pending_review → approved/needs_revision → published`, implemented in `src/pages/admin/ReportReview.tsx` with backend routes `/reports/:id/approve` and `/reports/:id/request-revision`), but `CreateReport.tsx` only ever offered "Save as Draft" or "Publish Report" — there was no way to enter `pending_review` from this screen, and *any* role allowed on the route (including plain `teacher`) could hit "Publish Report" and skip admin review entirely.
+**Changes:**
+- `CreateReport.tsx`: `onSubmit` now takes an `action: 'draft' | 'submit' | 'publish'` instead of a boolean.
+  - `'submit'` creates the report with `status: 'pending_review'` (already a legal value in `createReportSchema` — no backend change needed) so it lands in the admin Report Review queue.
+  - `'publish'` keeps the BUG-19 create-then-publish flow.
+- Added `canPublishDirectly = hasAnyRole(['super_admin', 'admin'])`. The second action button now reads **"Submit for Review"** for teachers (→ `'submit'`) and **"Publish Report"** for admins/super_admins (→ `'publish'`), so only reviewers can bypass the queue.
+**Policy decided with user:** Teachers always go through review; admins/super_admins may publish directly since they are the reviewers.
+**Learning:** When a route's `allowedRoles` includes multiple roles with different authority levels (here: teacher vs admin/super_admin), don't assume the same UI action is safe for all of them — check whether the lower-privileged role should see a different action/label entirely, not just the same button gated by a disabled state.
+**Test:** Log in as a teacher-only account → Create Report → second button reads "Submit for Review" → report lands with `status='pending_review'` in the admin Report Review "Pending" tab, not published. Log in as admin/super_admin → button still reads "Publish Report" and publishes immediately as before.
+**Pending test file:** [`Pending Test for BUG-20.md`](./Pending%20Test%20for%20BUG-20.md)
+
+---
+
 ## Summary Table
 
 | Bug | Description | Phase | Status |
@@ -250,7 +268,8 @@
 | BUG-17 | Sponsor route URL mismatch | Frontend | 🧪 Pending test |
 | BUG-18 | `updateReportSchema` status too narrow | Backend | ✅ Fixed |
 | BUG-19 | Publish flow created report with invalid status | Frontend | 🧪 Pending test |
+| BUG-20 | Teachers could publish reports directly, bypassing review | Frontend | 🧪 Pending test |
 
 ---
 
-*Last updated: 2026-07-11 — Session 4 (BUG-19 found & fixed)*
+*Last updated: 2026-07-13 — Session 4 (BUG-19, BUG-20 found & fixed)*
