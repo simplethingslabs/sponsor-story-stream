@@ -5,6 +5,10 @@ import type { UserWithRoles, LoginCredentials, RegisterData, AuthState, UserRole
 interface AuthContextType extends AuthState {
   login: (credentials: LoginCredentials) => Promise<{ success: boolean; error?: string }>;
   register: (data: RegisterData) => Promise<{ success: boolean; error?: string }>;
+  registerWithInvitation: (
+    token: string,
+    data: { password: string; full_name: string; phone?: string }
+  ) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   forgotPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   resetPassword: (token: string, password: string) => Promise<{ success: boolean; error?: string }>;
@@ -135,6 +139,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { success: true };
   }, []);
 
+  const registerWithInvitation = useCallback(
+    async (token: string, data: { password: string; full_name: string; phone?: string }) => {
+      setState((prev) => ({ ...prev, isLoading: true }));
+
+      const { data: responseData, error } = await api.post<{
+        access_token: string;
+        refresh_token: string;
+      }>(`/auth/register/${token}`, data);
+
+      if (error || !responseData) {
+        setState((prev) => ({ ...prev, isLoading: false }));
+        return { success: false, error: error || 'Registration failed' };
+      }
+
+      api.setTokens(responseData.access_token, responseData.refresh_token);
+
+      const { data: userData } = await api.get<UserWithRoles>('/auth/me');
+      if (userData) {
+        localStorage.setItem('user', JSON.stringify(userData));
+      }
+
+      setState({
+        user: userData || null,
+        isAuthenticated: true,
+        isLoading: false,
+      });
+
+      return { success: true };
+    },
+    []
+  );
+
   const logout = useCallback(() => {
     // Optionally call logout endpoint
     api.post('/auth/logout').catch(() => {
@@ -185,6 +221,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ...state,
         login,
         register,
+        registerWithInvitation,
         logout,
         forgotPassword,
         resetPassword,

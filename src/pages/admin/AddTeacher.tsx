@@ -29,7 +29,10 @@ export default function AddTeacher() {
         phone: form.phone || undefined,
         role: 'teacher',
       });
-      toast({ title: 'Teacher account created successfully' });
+      toast({
+        title: 'Teacher account created successfully',
+        description: 'An email with their login details has been sent.',
+      });
       navigate('/dashboard/teachers');
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });

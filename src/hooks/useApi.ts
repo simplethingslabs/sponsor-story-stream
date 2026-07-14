@@ -562,6 +562,21 @@ export function useCancelInvitation() {
   });
 }
 
+export function useValidateInvitation(token: string | null) {
+  return useQuery({
+    queryKey: ['invitations', 'validate', token],
+    queryFn: async () => {
+      const response = await api.get<{ valid: boolean; email: string; inviter_name?: string }>(
+        `/invitations/validate/${token}`
+      );
+      if (response.error) throw new Error(response.error);
+      return response.data!;
+    },
+    enabled: !!token,
+    retry: false,
+  });
+}
+
 // ============ Registrations Hooks ============
 export function usePendingRegistrations(params?: Record<string, any>) {
   return useQuery({

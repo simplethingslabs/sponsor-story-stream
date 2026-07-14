@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, UserPlus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useValidateInvitation } from '@/hooks/useApi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,26 +27,64 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 
 export function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
-  const { register: registerUser, isLoading } = useAuth();
+  const { register: registerUser, registerWithInvitation, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const invitationToken = searchParams.get('token');
+
+  const {
+    data: invitation,
+    isLoading: isValidatingInvitation,
+    isError: invitationInvalid,
+  } = useValidateInvitation(invitationToken);
 
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
   });
 
+  useEffect(() => {
+    if (invitation?.email) {
+      setValue('email', invitation.email);
+    }
+  }, [invitation, setValue]);
+
   const onSubmit = async (data: RegisterFormData) => {
+    if (invitationToken) {
+      const result = await registerWithInvitation(invitationToken, {
+        password: data.password,
+        full_name: data.full_name,
+        phone: data.phone,
+      });
+
+      if (result.success) {
+        toast({
+          title: 'Welcome!',
+          description: 'Your sponsor account is ready.',
+        });
+        navigate('/sponsor');
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Registration failed',
+          description: result.error || 'This invitation link may be invalid or expired.',
+        });
+      }
+      return;
+    }
+
     const result = await registerUser({
       email: data.email,
       password: data.password,
       full_name: data.full_name,
       phone: data.phone,
     });
-    
+
     if (result.success) {
       toast({
         title: 'Registration Successful!',
@@ -61,12 +100,47 @@ export function RegisterForm() {
     }
   };
 
+  if (invitationToken && isValidatingInvitation) {
+    return (
+      <Card className="w-full max-w-md shadow-warm animate-fade-in">
+        <CardContent className="py-12 text-center text-muted-foreground">
+          Validating your invitation...
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (invitationToken && invitationInvalid) {
+    return (
+      <Card className="w-full max-w-md shadow-warm animate-fade-in">
+        <CardHeader className="space-y-1 text-center">
+          <CardTitle className="text-2xl font-display">Invitation Invalid</CardTitle>
+          <CardDescription>
+            This invitation link is invalid or has expired. Please ask for a new invitation, or
+            register below without one.
+          </CardDescription>
+        </CardHeader>
+        <CardFooter>
+          <Link to="/register" className="w-full">
+            <Button variant="outline" className="w-full">
+              Register Without Invitation
+            </Button>
+          </Link>
+        </CardFooter>
+      </Card>
+    );
+  }
+
   return (
     <Card className="w-full max-w-md shadow-warm animate-fade-in">
       <CardHeader className="space-y-1 text-center">
-        <CardTitle className="text-2xl font-display">Become a Sponsor</CardTitle>
+        <CardTitle className="text-2xl font-display">
+          {invitationToken ? 'Accept Your Invitation' : 'Become a Sponsor'}
+        </CardTitle>
         <CardDescription>
-          Join our community and make a difference in a child's life
+          {invitationToken
+            ? `You've been invited by ${invitation?.inviter_name || 'our team'} — set a password to finish creating your account.`
+            : "Join our community and make a difference in a child's life"}
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
@@ -91,6 +165,7 @@ export function RegisterForm() {
               id="email"
               type="email"
               placeholder="you@example.com"
+              readOnly={!!invitationToken}
               {...register('email')}
               className={errors.email ? 'border-destructive' : ''}
             />

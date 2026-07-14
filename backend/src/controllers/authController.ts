@@ -459,6 +459,27 @@ export async function createUser(req: Request, res: Response, next: NextFunction
       [userId]
     );
 
+    // Email the new user their login credentials
+    if (verifyResendConfig()) {
+      try {
+        await getResendClient()?.emails.send({
+          from: emailConfig.from,
+          to: email,
+          subject: 'Your AVPSponsorConnect Account',
+          html: `
+            <h2>Welcome, ${full_name}!</h2>
+            <p>An account has been created for you on AVPSponsorConnect as a <strong>${role}</strong>.</p>
+            <p><strong>Email:</strong> ${email}</p>
+            <p><strong>Password:</strong> ${password}</p>
+            <p><a href="${emailConfig.frontendUrl}/login">Log In</a></p>
+            <p>For your security, we recommend changing this password after you log in.</p>
+          `,
+        });
+      } catch (emailError) {
+        console.error('Failed to send account creation email:', emailError);
+      }
+    }
+
     res.status(201).json({
       message: `${role.charAt(0).toUpperCase() + role.slice(1)} account created successfully`,
       user: { ...result.rows[0], roles: [role] },

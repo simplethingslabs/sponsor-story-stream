@@ -245,6 +245,53 @@
 
 ---
 
+### BUG-21 — Password reset link 404s (missing frontend page)
+**Status:** 🧪 Fixed — pending test on Vercel
+**Found:** 2026-07-15, discovered during login-provisioning investigation
+**Priority:** High — password reset was completely unusable, and was the only documented fallback for a directly-added teacher/sponsor who wasn't told their password
+**Files:** `src/App.tsx`, `src/pages/ResetPassword.tsx` (new), `src/components/auth/ResetPasswordForm.tsx` (new)
+**Root cause:** The backend (`POST /auth/forgot-password`, `POST /auth/reset-password`) and `AuthContext.resetPassword()` were all fully implemented and correctly emailed a working `/reset-password?token=...` link — but no `/reset-password` route or page existed anywhere in the frontend. Clicking the emailed link always hit the catch-all 404.
+**Changes:**
+- New `ResetPasswordForm.tsx` (styled like the existing `ForgotPasswordForm.tsx`): reads `token` from the query string, takes a new password + confirmation, calls the existing `resetPassword(token, password)`, shows an invalid-link state if there's no token and a success state with a link to `/login` on completion.
+- New `ResetPassword.tsx` page wrapping it; registered at `/reset-password` inside the existing `AuthLayout` route group in `App.tsx`.
+- No backend changes needed — the API side already worked correctly.
+**Learning:** A hook existing in `AuthContext` (or any context) doesn't mean the feature is reachable — always confirm there's a route + page actually calling it before assuming a flow works end-to-end.
+**Test:** Request a password reset → click the emailed link → land on a real reset form (not a 404) → set new password → redirected/prompted to log in → new password works.
+**Pending test file:** [`Pending Test for BUG-21.md`](./Pending%20Test%20for%20BUG-21.md)
+
+---
+
+### BUG-22 — Invite Sponsor token flow disconnected from Register page
+**Status:** 🧪 Fixed — pending test on Vercel
+**Found:** 2026-07-15, discovered during login-provisioning investigation
+**Priority:** Medium — "Invite Sponsor" emails a link that never actually completes true invite-based signup
+**Files:** `src/components/auth/RegisterForm.tsx`, `src/contexts/AuthContext.tsx`, `src/hooks/useApi.ts`
+**Root cause:** `invitationsController.sendInvitation` (backend) emails a link to `/register?token=...`, and the backend's accept-invitation endpoint `POST /auth/register/:token` (`authController.registerWithInvitation`) already works correctly and logs the user in immediately. But `RegisterForm.tsx` never read the `token` query param at all — it always called plain `register()` → `POST /auth/register`, which just files a `pending_registrations` row for manual admin approval. So every invited sponsor was funneled into the generic pending-approval queue instead of being signed up (and logged in) directly via their invitation.
+**Changes:**
+- Added `useValidateInvitation(token)` hook (`GET /invitations/validate/:token`, public) to `src/hooks/useApi.ts`.
+- Added `registerWithInvitation(token, data)` to `AuthContext` — posts to `/auth/register/:token` and logs the user in immediately using the returned tokens (same pattern as `login`).
+- `RegisterForm.tsx`: detects `?token=` via `useSearchParams`. If present, validates it on mount (shows a loading/invalid state), locks the email field to the invited address, and submits via `registerWithInvitation` instead of `register` — landing the new sponsor logged in immediately. With no token, the existing self-serve/pending-approval behavior is unchanged.
+**Learning:** An email template linking to `X?token=...` is only half the flow — always trace whether the page on the receiving end actually reads and uses that param, not just whether a matching backend endpoint exists.
+**Test:** Admin sends an invite → click the emailed link → land on "Accept Your Invitation" with email pre-filled and locked → set a password → immediately logged in as sponsor (not sent to pending approval). Visiting `/register` with no token still shows the normal self-serve form.
+**Pending test file:** [`Pending Test for BUG-22.md`](./Pending%20Test%20for%20BUG-22.md)
+
+---
+
+### BUG-23 — No email sent when admin creates a teacher/sponsor account directly
+**Status:** 🧪 Fixed — pending test on Render
+**Found:** 2026-07-15, user asked how a newly-added teacher/sponsor would log in
+**Priority:** Medium — onboarding gap, not a broken feature (accounts worked, just weren't communicated)
+**File:** `backend/src/controllers/authController.ts` (`createUser`)
+**Root cause:** "Add Teacher"/"Add Sponsor" set a real, admin-chosen password immediately (`bcrypt.hash` + insert), so the account was always login-ready — but `createUser` never sent any email, unlike every other account-provisioning path in this codebase (`sendInvitation`, `forgotPassword`, `register`'s admin notification). The admin had no way to notify the new user except manually copying the password out-of-band.
+**Changes:**
+- `createUser` now emails the new user (via the existing Resend pattern, guarded by `verifyResendConfig()`) with their email, the password the admin set, and a link to `/login`, wrapped in a try/catch so a Resend outage doesn't fail account creation.
+- `AddTeacher.tsx` / `AddSponsor.tsx` success toasts updated to mention the email was sent.
+**Known trade-off:** this emails the password in plaintext — email isn't a secure channel. Accepted deliberately per product decision, since the account is immediately login-ready either way; the email tells the user to change their password after logging in.
+**Test:** Add a teacher (or sponsor) → check that account's inbox → confirm an email arrives with the correct email/password/login link → log in with those exact credentials successfully.
+**Pending test file:** [`Pending Test for BUG-23.md`](./Pending%20Test%20for%20BUG-23.md)
+
+---
+
 ## Summary Table
 
 | Bug | Description | Phase | Status |
@@ -269,7 +316,10 @@
 | BUG-18 | `updateReportSchema` status too narrow | Backend | ✅ Fixed |
 | BUG-19 | Publish flow created report with invalid status | Frontend | 🧪 Pending test |
 | BUG-20 | Teachers could publish reports directly, bypassing review | Frontend | 🧪 Pending test |
+| BUG-21 | Password reset link 404s (missing frontend page) | Frontend | 🧪 Pending test |
+| BUG-22 | Invite Sponsor token flow disconnected from Register | Full-stack | 🧪 Pending test |
+| BUG-23 | No email sent when admin creates teacher/sponsor | Backend | 🧪 Pending test |
 
 ---
 
-*Last updated: 2026-07-13 — Session 4 (BUG-19, BUG-20 found & fixed)*
+*Last updated: 2026-07-15 — Session 5 (BUG-21, BUG-22, BUG-23 found & fixed)*

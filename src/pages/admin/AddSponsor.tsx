@@ -29,7 +29,10 @@ export default function AddSponsor() {
         phone: form.phone || undefined,
         role: 'sponsor',
       });
-      toast({ title: 'Sponsor account created successfully' });
+      toast({
+        title: 'Sponsor account created successfully',
+        description: 'An email with their login details has been sent.',
+      });
       navigate('/dashboard/sponsors');
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
