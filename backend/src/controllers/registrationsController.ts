@@ -113,7 +113,7 @@ export async function approveRegistration(req: Request, res: Response, next: Nex
       
       // Send approval email
       if (verifyResendConfig()) {
-        await getResendClient()?.emails.send({
+        const { error: emailError } = await getResendClient()?.emails.send({
           from: emailConfig.from,
           to: pending.email,
           subject: 'Your Registration Has Been Approved!',
@@ -123,9 +123,10 @@ export async function approveRegistration(req: Request, res: Response, next: Nex
             <p>Your registration has been approved. You can now log in to your sponsor account.</p>
             <p><a href="${emailConfig.frontendUrl}/login">Log In Now</a></p>
           `,
-        });
+        }) ?? {};
+        if (emailError) console.error('Resend error (registration approved):', emailError);
       }
-      
+
       res.json({ message: 'Registration approved successfully' });
     } catch (err) {
       await client.query('ROLLBACK');
@@ -167,7 +168,7 @@ export async function rejectRegistration(req: Request, res: Response, next: Next
     
     // Send rejection email
     if (verifyResendConfig()) {
-      await getResendClient()?.emails.send({
+      const { error: emailError } = await getResendClient()?.emails.send({
         from: emailConfig.from,
         to: pending.email,
         subject: 'Update on Your Registration',
@@ -178,7 +179,8 @@ export async function rejectRegistration(req: Request, res: Response, next: Next
           ${reason ? `<p>Reason: ${reason}</p>` : ''}
           <p>If you have any questions, please contact us.</p>
         `,
-      });
+      }) ?? {};
+      if (emailError) console.error('Resend error (registration rejected):', emailError);
     }
     
     res.json({ message: 'Registration rejected' });
@@ -240,7 +242,7 @@ export async function batchApproveRegistrations(req: Request, res: Response, nex
           
           // Send approval email
           if (verifyResendConfig()) {
-            await getResendClient()?.emails.send({
+            const { error: emailError } = await getResendClient()?.emails.send({
               from: emailConfig.from,
               to: pending.email,
               subject: 'Your Registration Has Been Approved!',
@@ -250,7 +252,8 @@ export async function batchApproveRegistrations(req: Request, res: Response, nex
                 <p>Your registration has been approved. You can now log in to your sponsor account.</p>
                 <p><a href="${emailConfig.frontendUrl}/login">Log In Now</a></p>
               `,
-            });
+            }) ?? {};
+            if (emailError) console.error('Resend error (batch registration approved):', emailError);
           }
           
           results.push({ id, email: pending.email });

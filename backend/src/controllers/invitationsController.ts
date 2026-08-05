@@ -99,7 +99,7 @@ export async function sendInvitation(req: Request, res: Response, next: NextFunc
     
     // Send invitation email
     if (verifyResendConfig()) {
-      await getResendClient()?.emails.send({
+      const { error: emailError } = await getResendClient()?.emails.send({
         from: emailConfig.from,
         to: data.email,
         subject: 'You\'re Invited to Join as a Sponsor',
@@ -111,7 +111,8 @@ export async function sendInvitation(req: Request, res: Response, next: NextFunc
           <p><a href="${emailConfig.frontendUrl}/register?token=${token}">Accept Invitation</a></p>
           <p>This invitation expires in ${INVITATION_EXPIRES_DAYS} days.</p>
         `,
-      });
+      }) ?? {};
+      if (emailError) console.error('Resend error (send invitation):', emailError);
     }
     
     res.status(201).json({
@@ -161,7 +162,7 @@ export async function resendInvitation(req: Request, res: Response, next: NextFu
     
     // Send email
     if (verifyResendConfig()) {
-      await getResendClient()?.emails.send({
+      const { error: emailError } = await getResendClient()?.emails.send({
         from: emailConfig.from,
         to: invite.email,
         subject: 'Reminder: You\'re Invited to Join as a Sponsor',
@@ -172,7 +173,8 @@ export async function resendInvitation(req: Request, res: Response, next: NextFu
           <p><a href="${emailConfig.frontendUrl}/register?token=${newToken}">Accept Invitation</a></p>
           <p>This invitation expires in ${INVITATION_EXPIRES_DAYS} days.</p>
         `,
-      });
+      }) ?? {};
+      if (emailError) console.error('Resend error (resend invitation):', emailError);
     }
     
     res.json({ message: 'Invitation resent successfully' });
@@ -285,7 +287,7 @@ export async function batchSendInvitations(req: Request, res: Response, next: Ne
         
         // Send email
         if (verifyResendConfig()) {
-          await getResendClient()?.emails.send({
+          const { error: emailError } = await getResendClient()?.emails.send({
             from: emailConfig.from,
             to: data.email,
             subject: 'You\'re Invited to Join as a Sponsor',
@@ -297,7 +299,8 @@ export async function batchSendInvitations(req: Request, res: Response, next: Ne
               <p><a href="${emailConfig.frontendUrl}/register?token=${token}">Accept Invitation</a></p>
               <p>This invitation expires in ${INVITATION_EXPIRES_DAYS} days.</p>
             `,
-          });
+          }) ?? {};
+          if (emailError) console.error('Resend error (batch invitation):', emailError);
         }
         
         results.push(result.rows[0]);

@@ -320,7 +320,7 @@ export async function publishReport(req: Request, res: Response, next: NextFunct
       );
       
       for (const sponsor of sponsors.rows) {
-        await getResendClient()?.emails.send({
+        const { error: emailError } = await getResendClient()?.emails.send({
           from: emailConfig.from,
           to: sponsor.email,
           subject: `New Progress Report for ${childName}`,
@@ -330,7 +330,8 @@ export async function publishReport(req: Request, res: Response, next: NextFunct
             <p>A new ${report.quarter} ${report.year} progress report is available for ${childName}.</p>
             <p><a href="${emailConfig.frontendUrl}/sponsor/children/${report.child_id}/reports/${report.id}">View Report</a></p>
           `,
-        });
+        }) ?? {};
+        if (emailError) console.error('Resend error (report published notification):', emailError);
       }
     }
     

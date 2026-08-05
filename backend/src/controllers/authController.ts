@@ -128,7 +128,7 @@ export async function register(req: Request, res: Response, next: NextFunction) 
       
       if (admins.rows.length > 0) {
         const adminEmails = admins.rows.map(a => a.email);
-        await getResendClient()?.emails.send({
+        const { error: emailError } = await getResendClient()?.emails.send({
           from: emailConfig.from,
           to: adminEmails,
           subject: 'New Sponsor Registration Pending',
@@ -140,7 +140,8 @@ export async function register(req: Request, res: Response, next: NextFunction) 
             ${message ? `<p><strong>Message:</strong> ${message}</p>` : ''}
             <p><a href="${emailConfig.frontendUrl}/dashboard/pending-approvals">Review in Dashboard</a></p>
           `,
-        });
+        }) ?? {};
+        if (emailError) console.error('Resend error (registration notification):', emailError);
       }
     }
     
@@ -247,7 +248,7 @@ export async function forgotPassword(req: Request, res: Response, next: NextFunc
     
     // Send email
     if (verifyResendConfig()) {
-      await getResendClient()?.emails.send({
+      const { error: emailError } = await getResendClient()?.emails.send({
         from: emailConfig.from,
         to: email,
         subject: 'Password Reset Request',
@@ -259,7 +260,8 @@ export async function forgotPassword(req: Request, res: Response, next: NextFunc
           <p>This link expires in 1 hour.</p>
           <p>If you didn't request this, please ignore this email.</p>
         `,
-      });
+      }) ?? {};
+      if (emailError) console.error('Resend error (password reset):', emailError);
     }
     
     res.json({ message: 'If an account exists, you will receive a password reset email' });
@@ -462,7 +464,7 @@ export async function createUser(req: Request, res: Response, next: NextFunction
     // Email the new user their login credentials
     if (verifyResendConfig()) {
       try {
-        await getResendClient()?.emails.send({
+        const { error: emailError } = await getResendClient()?.emails.send({
           from: emailConfig.from,
           to: email,
           subject: 'Your AVPSponsorConnect Account',
@@ -474,7 +476,8 @@ export async function createUser(req: Request, res: Response, next: NextFunction
             <p><a href="${emailConfig.frontendUrl}/login">Log In</a></p>
             <p>For your security, we recommend changing this password after you log in.</p>
           `,
-        });
+        }) ?? {};
+        if (emailError) console.error('Resend error (account creation):', emailError);
       } catch (emailError) {
         console.error('Failed to send account creation email:', emailError);
       }
