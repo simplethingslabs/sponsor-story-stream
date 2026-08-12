@@ -23,6 +23,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import ChildrenList from "./pages/admin/ChildrenList";
 import AddChild from "./pages/admin/AddChild";
 import EditChild from "./pages/admin/EditChild";
+import ChildDetail from "./pages/admin/ChildDetail";
 import ReportsList from "./pages/admin/ReportsList";
 import CreateReport from "./pages/admin/CreateReport";
 import EditReport from "./pages/admin/EditReport";
@@ -93,6 +94,7 @@ const App = () => (
               <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><AdminDashboard /></ProtectedRoute>} />
               <Route path="/dashboard/children" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><ChildrenList /></ProtectedRoute>} />
               <Route path="/dashboard/children/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><AddChild /></ProtectedRoute>} />
+              <Route path="/dashboard/children/:id" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><ChildDetail /></ProtectedRoute>} />
               <Route path="/dashboard/children/:id/edit" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><EditChild /></ProtectedRoute>} />
               <Route path="/dashboard/reports" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><ReportsList /></ProtectedRoute>} />
               <Route path="/dashboard/reports/review" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><ReportReview /></ProtectedRoute>} />
