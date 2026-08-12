@@ -291,7 +291,7 @@ export default function SponsorsList() {
                                 <DropdownMenuItem
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    navigate(`/dashboard/sponsorships/${sponsor.id}`);
+                                    navigate(`/dashboard/sponsors/${sponsor.id}/manage`);
                                   }}
                                 >
                                   <UserCheck className="mr-2 h-4 w-4" />
