@@ -27,6 +27,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+import { FEATURE_FLAGS, type FeatureFlag } from '@/config/featureFlags';
+
 interface TeacherLayoutProps {
   children: React.ReactNode;
 }
@@ -35,12 +37,13 @@ const navigation = [
   { name: 'Dashboard', href: '/teacher', icon: LayoutDashboard },
   { name: 'My Students', href: '/teacher/students', icon: Users },
   { name: 'Attendance', href: '/teacher/attendance', icon: ClipboardCheck },
-  { name: 'Classroom Moments', href: '/teacher/moments', icon: Camera },
+  { name: 'Classroom Moments', href: '/teacher/moments', icon: Camera, flag: 'classroomMoments' as FeatureFlag },
   { name: 'Progress Reports', href: '/teacher/reports', icon: FileText },
 ];
 
 function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
   const location = useLocation();
+  const visibleNavigation = navigation.filter((item) => !item.flag || FEATURE_FLAGS[item.flag]);
 
   return (
     <div className="flex h-full flex-col">
@@ -55,7 +58,7 @@ function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
       {/* Navigation */}
       <ScrollArea className="flex-1 px-3 py-4">
         <nav className="space-y-1">
-          {navigation.map((item) => {
+          {visibleNavigation.map((item) => {
             const isActive = location.pathname === item.href || 
               (item.href !== '/teacher' && location.pathname.startsWith(item.href));
             return (
@@ -89,14 +92,6 @@ function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
           >
             <FileText className="h-5 w-5" />
             Create Report
-          </Link>
-          <Link
-            to="/teacher/moments/upload"
-            onClick={onLinkClick}
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          >
-            <Camera className="h-5 w-5" />
-            Upload Photos
           </Link>
         </nav>
       </ScrollArea>

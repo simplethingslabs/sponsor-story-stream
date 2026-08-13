@@ -30,6 +30,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { FEATURE_FLAGS, type FeatureFlag } from '@/config/featureFlags';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -40,15 +41,15 @@ const navigation = [
   { name: 'Children', href: '/dashboard/children', icon: Users },
   { name: 'Progress Reports', href: '/dashboard/reports', icon: FileText },
   { name: 'Report Review', href: '/dashboard/reports/review', icon: ClipboardList, adminOnly: true },
-  { name: 'Newsletters', href: '/dashboard/newsletters', icon: Newspaper },
-  { name: 'Events', href: '/dashboard/events', icon: Calendar },
+  { name: 'Newsletters', href: '/dashboard/newsletters', icon: Newspaper, flag: 'newsletters' as FeatureFlag },
+  { name: 'Events', href: '/dashboard/events', icon: Calendar, flag: 'events' as FeatureFlag },
   { name: 'Sponsors', href: '/dashboard/sponsors', icon: UserPlus },
   { name: 'Teachers', href: '/dashboard/teachers', icon: GraduationCap, adminOnly: true },
 ];
 
 const financialNavigation = [
-  { name: 'Financial Dashboard', href: '/dashboard/financials', icon: LayoutDashboard },
-  { name: 'Payment Management', href: '/dashboard/payments', icon: FileText },
+  { name: 'Financial Dashboard', href: '/dashboard/financials', icon: LayoutDashboard, flag: 'financialDashboard' as FeatureFlag },
+  { name: 'Payment Management', href: '/dashboard/payments', icon: FileText, flag: 'paymentManagement' as FeatureFlag },
 ];
 
 const teacherNavigation = [
@@ -56,15 +57,17 @@ const teacherNavigation = [
 ];
 
 const systemNavigation = [
-  { name: 'Notification Center', href: '/dashboard/notifications', icon: Bell },
-  { name: 'Audit Logs', href: '/dashboard/audit-logs', icon: ClipboardList },
-  { name: 'Trash', href: '/dashboard/trash', icon: Trash2 },
+  { name: 'Notification Center', href: '/dashboard/notifications', icon: Bell, flag: 'notificationCenter' as FeatureFlag },
+  { name: 'Audit Logs', href: '/dashboard/audit-logs', icon: ClipboardList, flag: 'auditLogs' as FeatureFlag },
+  { name: 'Trash', href: '/dashboard/trash', icon: Trash2, flag: 'trash' as FeatureFlag },
 ];
 
 function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
   const location = useLocation();
   const { hasRole } = useAuth();
   const isSuperAdmin = hasRole('super_admin');
+  const visibleFinancialNavigation = financialNavigation.filter((item) => FEATURE_FLAGS[item.flag]);
+  const visibleSystemNavigation = systemNavigation.filter((item) => FEATURE_FLAGS[item.flag]);
 
   return (
     <div className="flex h-full flex-col">
@@ -84,7 +87,11 @@ function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
             if (item.adminOnly && !hasRole('super_admin') && !hasRole('admin')) {
               return null;
             }
-            
+            // Skip features not yet launched
+            if (item.flag && !FEATURE_FLAGS[item.flag]) {
+              return null;
+            }
+
             const isActive = location.pathname === item.href || 
               (item.href !== '/dashboard' && location.pathname.startsWith(item.href) && 
                !(item.href === '/dashboard/reports' && location.pathname.includes('/review')));
@@ -107,14 +114,14 @@ function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
         </nav>
 
         {/* Financials Section - Admin Only */}
-        {(hasRole('super_admin') || hasRole('admin')) && (
+        {(hasRole('super_admin') || hasRole('admin')) && visibleFinancialNavigation.length > 0 && (
           <>
             <div className="my-4 border-t border-border" />
             <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Financials
             </p>
             <nav className="space-y-1">
-              {financialNavigation.map((item) => {
+              {visibleFinancialNavigation.map((item) => {
                 const isActive = location.pathname === item.href || 
                   location.pathname.startsWith(item.href);
                 return (
@@ -166,14 +173,14 @@ function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
         </>
 
         {/* System Section - Super Admin Only */}
-        {isSuperAdmin && (
+        {isSuperAdmin && visibleSystemNavigation.length > 0 && (
           <>
             <div className="my-4 border-t border-border" />
             <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               System
             </p>
             <nav className="space-y-1">
-              {systemNavigation.map((item) => {
+              {visibleSystemNavigation.map((item) => {
                 const isActive = location.pathname === item.href || 
                   location.pathname.startsWith(item.href);
                 return (

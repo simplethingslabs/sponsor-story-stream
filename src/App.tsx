@@ -8,6 +8,7 @@ import { DataProvider } from "@/contexts/DataContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AuthLayout } from "@/components/layouts/AuthLayout";
+import { FEATURE_FLAGS, type FeatureFlag } from "@/config/featureFlags";
 
 // Public Pages
 import Index from "./pages/Index";
@@ -68,6 +69,13 @@ import TeacherReports from "./pages/teacher/TeacherReports";
 
 const queryClient = new QueryClient();
 
+function FeatureRoute({ flag, children }: { flag: FeatureFlag; children: React.ReactNode }) {
+  if (!FEATURE_FLAGS[flag]) {
+    return <NotFound />;
+  }
+  return <>{children}</>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -101,10 +109,10 @@ const App = () => (
               <Route path="/dashboard/reports/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><CreateReport /></ProtectedRoute>} />
               <Route path="/dashboard/reports/:id" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><ReportDetail /></ProtectedRoute>} />
               <Route path="/dashboard/reports/:id/edit" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><EditReport /></ProtectedRoute>} />
-              <Route path="/dashboard/newsletters" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><NewslettersList /></ProtectedRoute>} />
-              <Route path="/dashboard/newsletters/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><AddNewsletter /></ProtectedRoute>} />
-              <Route path="/dashboard/events" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><EventsList /></ProtectedRoute>} />
-              <Route path="/dashboard/events/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><AddEvent /></ProtectedRoute>} />
+              <Route path="/dashboard/newsletters" element={<FeatureRoute flag="newsletters"><ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><NewslettersList /></ProtectedRoute></FeatureRoute>} />
+              <Route path="/dashboard/newsletters/new" element={<FeatureRoute flag="newsletters"><ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><AddNewsletter /></ProtectedRoute></FeatureRoute>} />
+              <Route path="/dashboard/events" element={<FeatureRoute flag="events"><ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><EventsList /></ProtectedRoute></FeatureRoute>} />
+              <Route path="/dashboard/events/new" element={<FeatureRoute flag="events"><ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><AddEvent /></ProtectedRoute></FeatureRoute>} />
               <Route path="/dashboard/sponsors" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><SponsorsList /></ProtectedRoute>} />
               <Route path="/dashboard/sponsors/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><AddSponsor /></ProtectedRoute>} />
               <Route path="/dashboard/sponsors/invite" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><InviteSponsor /></ProtectedRoute>} />
@@ -113,11 +121,11 @@ const App = () => (
               <Route path="/dashboard/sponsors/:id/manage" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><ManageSponsorships /></ProtectedRoute>} />
               <Route path="/dashboard/teachers" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><TeachersList /></ProtectedRoute>} />
               <Route path="/dashboard/teachers/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><AddTeacher /></ProtectedRoute>} />
-              <Route path="/dashboard/audit-logs" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><AuditLogs /></ProtectedRoute>} />
-              <Route path="/dashboard/trash" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><Trash /></ProtectedRoute>} />
-              <Route path="/dashboard/financials" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><FinancialDashboard /></ProtectedRoute>} />
-              <Route path="/dashboard/payments" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><PaymentManagement /></ProtectedRoute>} />
-              <Route path="/dashboard/notifications" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><NotificationCenter /></ProtectedRoute>} />
+              <Route path="/dashboard/audit-logs" element={<FeatureRoute flag="auditLogs"><ProtectedRoute allowedRoles={['super_admin', 'admin']}><AuditLogs /></ProtectedRoute></FeatureRoute>} />
+              <Route path="/dashboard/trash" element={<FeatureRoute flag="trash"><ProtectedRoute allowedRoles={['super_admin', 'admin']}><Trash /></ProtectedRoute></FeatureRoute>} />
+              <Route path="/dashboard/financials" element={<FeatureRoute flag="financialDashboard"><ProtectedRoute allowedRoles={['super_admin', 'admin']}><FinancialDashboard /></ProtectedRoute></FeatureRoute>} />
+              <Route path="/dashboard/payments" element={<FeatureRoute flag="paymentManagement"><ProtectedRoute allowedRoles={['super_admin', 'admin']}><PaymentManagement /></ProtectedRoute></FeatureRoute>} />
+              <Route path="/dashboard/notifications" element={<FeatureRoute flag="notificationCenter"><ProtectedRoute allowedRoles={['super_admin', 'admin']}><NotificationCenter /></ProtectedRoute></FeatureRoute>} />
 
               {/* Settings routes (all authenticated users) */}
               <Route path="/settings/notifications" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher', 'sponsor']}><NotificationSettings /></ProtectedRoute>} />
@@ -127,16 +135,16 @@ const App = () => (
               <Route path="/sponsor/children" element={<ProtectedRoute allowedRoles={['sponsor']}><SponsorChildrenList /></ProtectedRoute>} />
               <Route path="/sponsor/children/:childId" element={<ProtectedRoute allowedRoles={['sponsor']}><ChildProgress /></ProtectedRoute>} />
               <Route path="/sponsor/reports/:reportId" element={<ProtectedRoute allowedRoles={['sponsor']}><ReportDetail /></ProtectedRoute>} />
-              <Route path="/sponsor/newsletters" element={<ProtectedRoute allowedRoles={['sponsor']}><SponsorNewsletters /></ProtectedRoute>} />
-              <Route path="/sponsor/events" element={<ProtectedRoute allowedRoles={['sponsor']}><SponsorEvents /></ProtectedRoute>} />
-              <Route path="/sponsor/invite" element={<ProtectedRoute allowedRoles={['sponsor']}><InviteFriend /></ProtectedRoute>} />
-              <Route path="/sponsor/payments" element={<ProtectedRoute allowedRoles={['sponsor']}><SponsorPayments /></ProtectedRoute>} />
+              <Route path="/sponsor/newsletters" element={<FeatureRoute flag="newsletters"><ProtectedRoute allowedRoles={['sponsor']}><SponsorNewsletters /></ProtectedRoute></FeatureRoute>} />
+              <Route path="/sponsor/events" element={<FeatureRoute flag="events"><ProtectedRoute allowedRoles={['sponsor']}><SponsorEvents /></ProtectedRoute></FeatureRoute>} />
+              <Route path="/sponsor/invite" element={<FeatureRoute flag="inviteFriend"><ProtectedRoute allowedRoles={['sponsor']}><InviteFriend /></ProtectedRoute></FeatureRoute>} />
+              <Route path="/sponsor/payments" element={<FeatureRoute flag="sponsorPayments"><ProtectedRoute allowedRoles={['sponsor']}><SponsorPayments /></ProtectedRoute></FeatureRoute>} />
 
               {/* Teacher routes */}
               <Route path="/teacher" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><TeacherDashboard /></ProtectedRoute>} />
               <Route path="/teacher/students" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><TeacherStudents /></ProtectedRoute>} />
               <Route path="/teacher/attendance" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><AttendanceMarking /></ProtectedRoute>} />
-              <Route path="/teacher/moments" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><ClassroomMoments /></ProtectedRoute>} />
+              <Route path="/teacher/moments" element={<FeatureRoute flag="classroomMoments"><ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><ClassroomMoments /></ProtectedRoute></FeatureRoute>} />
               <Route path="/teacher/reports" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><TeacherReports /></ProtectedRoute>} />
               <Route path="/teacher/reports/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><CreateReport /></ProtectedRoute>} />
 

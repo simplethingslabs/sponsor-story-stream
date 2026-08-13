@@ -32,18 +32,20 @@ interface SponsorLayoutProps {
 }
 
 import { IndianRupee } from 'lucide-react';
+import { FEATURE_FLAGS, type FeatureFlag } from '@/config/featureFlags';
 
 const navigation = [
   { name: 'Home', href: '/sponsor', icon: Home },
   { name: 'My Sponsored Children', href: '/sponsor/children', icon: Users },
-  { name: 'Payments & Receipts', href: '/sponsor/payments', icon: IndianRupee },
-  { name: 'Newsletters', href: '/sponsor/newsletters', icon: Newspaper },
-  { name: 'Events & Activities', href: '/sponsor/events', icon: Calendar },
-  { name: 'Invite a Friend', href: '/sponsor/invite', icon: Share2 },
+  { name: 'Payments & Receipts', href: '/sponsor/payments', icon: IndianRupee, flag: 'sponsorPayments' as FeatureFlag },
+  { name: 'Newsletters', href: '/sponsor/newsletters', icon: Newspaper, flag: 'newsletters' as FeatureFlag },
+  { name: 'Events & Activities', href: '/sponsor/events', icon: Calendar, flag: 'events' as FeatureFlag },
+  { name: 'Invite a Friend', href: '/sponsor/invite', icon: Share2, flag: 'inviteFriend' as FeatureFlag },
 ];
 
 function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
   const location = useLocation();
+  const visibleNavigation = navigation.filter((item) => !item.flag || FEATURE_FLAGS[item.flag]);
 
   return (
     <div className="flex h-full flex-col">
@@ -58,7 +60,7 @@ function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
       {/* Navigation */}
       <ScrollArea className="flex-1 px-3 py-4">
         <nav className="space-y-1">
-          {navigation.map((item) => {
+          {visibleNavigation.map((item) => {
             const isActive = location.pathname === item.href ||
               (item.href !== '/sponsor' && location.pathname.startsWith(item.href));
             return (
