@@ -17,6 +17,7 @@ import {
   GraduationCap,
   ChevronDown,
   Settings,
+  ArrowLeft,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -43,6 +44,8 @@ const navigation = [
 
 function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
   const location = useLocation();
+  const { hasRole } = useAuth();
+  const isAdminViewing = hasRole('super_admin') || hasRole('admin');
   const visibleNavigation = navigation.filter((item) => !item.flag || FEATURE_FLAGS[item.flag]);
 
   return (
@@ -57,6 +60,19 @@ function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
 
       {/* Navigation */}
       <ScrollArea className="flex-1 px-3 py-4">
+        {isAdminViewing && (
+          <>
+            <Link
+              to="/dashboard"
+              onClick={onLinkClick}
+              className="mb-2 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="h-5 w-5" />
+              Back to Admin Dashboard
+            </Link>
+            <div className="my-2 border-t border-border" />
+          </>
+        )}
         <nav className="space-y-1">
           {visibleNavigation.map((item) => {
             const isActive = location.pathname === item.href || 
