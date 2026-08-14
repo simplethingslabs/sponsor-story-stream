@@ -5,10 +5,10 @@ import { AdminLayout } from '@/components/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Users, FileText, Newspaper, Calendar, Plus, TrendingUp, Clock } from 'lucide-react';
+import { Users, FileText, Calendar, Plus, TrendingUp, Clock, UserPlus, GraduationCap } from 'lucide-react';
 
 export default function AdminDashboard() {
-  const { user } = useAuth();
+  const { user, hasAnyRole } = useAuth();
   const navigate = useNavigate();
   
   // Use real API hooks instead of mock data
@@ -60,8 +60,12 @@ export default function AdminDashboard() {
   const quickActions = [
     { label: 'Add Child', icon: Users, href: '/dashboard/children/new' },
     { label: 'Create Report', icon: FileText, href: '/dashboard/reports/new' },
-    { label: 'Upload Newsletter', icon: Newspaper, href: '/dashboard/newsletters/new' },
-    { label: 'Add Event', icon: Calendar, href: '/dashboard/events/new' },
+    ...(hasAnyRole(['super_admin', 'admin'])
+      ? [
+          { label: 'Add Sponsor', icon: UserPlus, href: '/dashboard/sponsors/new' },
+          { label: 'Add Teacher', icon: GraduationCap, href: '/dashboard/teachers/new' },
+        ]
+      : []),
   ];
 
   // Recent activity (last 5 reports)
