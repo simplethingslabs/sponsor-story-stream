@@ -4,7 +4,8 @@ import { authenticate } from '../middleware/auth';
 import { requireAdmin } from '../middleware/authorize';
 import { validateBody } from '../middleware/validate';
 import { authRateLimiter, passwordResetLimiter } from '../middleware/rateLimiter';
-import { loginSchema, registerSchema, forgotPasswordSchema, resetPasswordSchema, refreshTokenSchema, createUserSchema } from '../schemas/auth';
+import { loginSchema, registerSchema, forgotPasswordSchema, resetPasswordSchema, refreshTokenSchema, createUserSchema, updateUserSchema } from '../schemas/auth';
+import { auditLog } from '../middleware/audit';
 
 const router = Router();
 
@@ -19,5 +20,8 @@ router.get('/me', authenticate, authController.getCurrentUser);
 router.put('/me', authenticate, authController.updateCurrentUser);
 router.post('/create-user', authenticate, requireAdmin, validateBody(createUserSchema), authController.createUser);
 router.get('/users', authenticate, requireAdmin, authController.listUsersByRole);
+router.get('/users/:id', authenticate, requireAdmin, authController.getUserById);
+router.put('/users/:id', authenticate, requireAdmin, validateBody(updateUserSchema), auditLog('users'), authController.updateUser);
+router.delete('/users/:id', authenticate, requireAdmin, auditLog('users'), authController.deleteUser);
 
 export default router;

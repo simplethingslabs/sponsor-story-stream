@@ -4,7 +4,7 @@ import jwt, { type SignOptions } from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../config/database';
 import { getResendClient, emailConfig, verifyResendConfig } from '../config/resend';
-import { LoginInput, RegisterInput, ForgotPasswordInput, ResetPasswordInput, RefreshTokenInput, CreateUserInput } from '../schemas/auth';
+import { LoginInput, RegisterInput, ForgotPasswordInput, ResetPasswordInput, RefreshTokenInput, CreateUserInput, UpdateUserInput } from '../schemas/auth';
 import { parsePostgresArray } from '../utils/helpers';
 
 if (!process.env.JWT_SECRET) {
@@ -510,6 +510,116 @@ export async function listUsersByRole(req: Request, res: Response, next: NextFun
     );
 
     res.json({ data: result.rows, total: result.rows.length });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Admin: Get single user by id (teacher/sponsor detail view)
+export async function getUserById(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `SELECT u.id, u.email, u.full_name, u.phone, u.avatar_url, u.created_at, u.updated_at,
+              array_agg(ur.role) as roles
+       FROM users u
+       LEFT JOIN user_roles ur ON u.id = ur.user_id
+       WHERE u.id = $1 AND u.deleted_at IS NULL
+       GROUP BY u.id`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const userData = result.rows[0];
+    userData.roles = parsePostgresArray(userData.roles);
+
+    res.json(userData);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Admin: Update a user (teacher/sponsor)
+export async function updateUser(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params;
+    const { email, full_name, phone } = req.body as UpdateUserInput;
+
+    if (email) {
+      const existing = await pool.query(
+        'SELECT id FROM users WHERE email = $1 AND id != $2',
+        [email, id]
+      );
+      if (existing.rows.length > 0) {
+        return res.status(400).json({ error: 'Email already registered' });
+      }
+    }
+
+    const fields: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
+
+    if (email !== undefined) {
+      fields.push(`email = $${paramIndex++}`);
+      values.push(email);
+    }
+    if (full_name !== undefined) {
+      fields.push(`full_name = $${paramIndex++}`);
+      values.push(full_name);
+    }
+    if (phone !== undefined) {
+      fields.push(`phone = $${paramIndex++}`);
+      values.push(phone);
+    }
+
+    if (fields.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    fields.push('updated_at = NOW()');
+    values.push(id);
+
+    const result = await pool.query(
+      `UPDATE users
+       SET ${fields.join(', ')}
+       WHERE id = $${paramIndex} AND deleted_at IS NULL
+       RETURNING id, email, full_name, phone, avatar_url, created_at, updated_at`,
+      values
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Admin: Soft delete a user (teacher/sponsor)
+export async function deleteUser(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+
+    const result = await pool.query(
+      `UPDATE users
+       SET deleted_at = NOW(), deleted_by = $1
+       WHERE id = $2 AND deleted_at IS NULL
+       RETURNING id`,
+      [userId, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ message: 'User deleted successfully' });
   } catch (error) {
     next(error);
   }

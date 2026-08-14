@@ -1,16 +1,58 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/layouts/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useTeachers } from '@/hooks/useApi';
-import { Plus, GraduationCap } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useTeachers, useDeleteTeacher } from '@/hooks/useApi';
+import { useToast } from '@/hooks/use-toast';
+import { Plus, GraduationCap, MoreHorizontal, Eye, Edit, Trash2, Loader2 } from 'lucide-react';
+import type { User } from '@/types';
 
 export default function TeachersList() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const { data, isLoading } = useTeachers();
+  const deleteTeacherMutation = useDeleteTeacher();
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const teachers = data?.data || [];
+
+  const handleDelete = async () => {
+    if (deleteId) {
+      try {
+        await deleteTeacherMutation.mutateAsync(deleteId);
+        toast({
+          title: 'Success',
+          description: 'Teacher deleted successfully',
+        });
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: error instanceof Error ? error.message : 'Failed to delete teacher',
+          variant: 'destructive',
+        });
+      }
+      setDeleteId(null);
+    }
+  };
 
   return (
     <AdminLayout>
@@ -54,10 +96,11 @@ export default function TeachersList() {
                     <TableHead>Email</TableHead>
                     <TableHead>Phone</TableHead>
                     <TableHead>Created</TableHead>
+                    <TableHead className="w-[80px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {teachers.map((teacher: any) => (
+                  {teachers.map((teacher: User) => (
                     <TableRow key={teacher.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
@@ -75,6 +118,36 @@ export default function TeachersList() {
                       <TableCell className="text-muted-foreground">
                         {new Date(teacher.created_at).toLocaleDateString()}
                       </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-background">
+                            <DropdownMenuItem
+                              onClick={() => navigate(`/dashboard/teachers/${teacher.id}`)}
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              View
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => navigate(`/dashboard/teachers/${teacher.id}/edit`)}
+                            >
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => setDeleteId(teacher.id)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -83,6 +156,28 @@ export default function TeachersList() {
           </CardContent>
         </Card>
       </div>
+
+      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the teacher's
+              account.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive">
+              {deleteTeacherMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                'Delete'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }

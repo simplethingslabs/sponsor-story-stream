@@ -40,6 +40,8 @@ import InviteSponsor from "./pages/admin/InviteSponsor";
 import AuditLogs from "./pages/admin/AuditLogs";
 import TeachersList from "./pages/admin/TeachersList";
 import AddTeacher from "./pages/admin/AddTeacher";
+import TeacherDetail from "./pages/admin/TeacherDetail";
+import EditTeacher from "./pages/admin/EditTeacher";
 import AddSponsor from "./pages/admin/AddSponsor";
 import Trash from "./pages/admin/Trash";
 import ReportReview from "./pages/admin/ReportReview";
@@ -121,6 +123,8 @@ const App = () => (
               <Route path="/dashboard/sponsors/:id/manage" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><ManageSponsorships /></ProtectedRoute>} />
               <Route path="/dashboard/teachers" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><TeachersList /></ProtectedRoute>} />
               <Route path="/dashboard/teachers/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><AddTeacher /></ProtectedRoute>} />
+              <Route path="/dashboard/teachers/:id" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><TeacherDetail /></ProtectedRoute>} />
+              <Route path="/dashboard/teachers/:id/edit" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><EditTeacher /></ProtectedRoute>} />
               <Route path="/dashboard/audit-logs" element={<FeatureRoute flag="auditLogs"><ProtectedRoute allowedRoles={['super_admin', 'admin']}><AuditLogs /></ProtectedRoute></FeatureRoute>} />
               <Route path="/dashboard/trash" element={<FeatureRoute flag="trash"><ProtectedRoute allowedRoles={['super_admin', 'admin']}><Trash /></ProtectedRoute></FeatureRoute>} />
               <Route path="/dashboard/financials" element={<FeatureRoute flag="financialDashboard"><ProtectedRoute allowedRoles={['super_admin', 'admin']}><FinancialDashboard /></ProtectedRoute></FeatureRoute>} />

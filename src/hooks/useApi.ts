@@ -67,6 +67,7 @@ export const queryKeys = {
   attendance: (date: string) => ['attendance', date] as const,
   moments: ['moments'] as const,
   teachers: ['teachers'] as const,
+  teacher: (id: string) => ['teachers', id] as const,
 };
 
 // ============ Children Hooks ============
@@ -950,6 +951,47 @@ export function useTeachers() {
       const response = await api.get<{ data: User[]; total: number }>('/auth/users?role=teacher');
       if (response.error) throw new Error(response.error);
       return response.data!;
+    },
+  });
+}
+
+export function useTeacher(id: string) {
+  return useQuery({
+    queryKey: queryKeys.teacher(id),
+    queryFn: async () => {
+      const response = await api.get<User>(`/auth/users/${id}`);
+      if (response.error) throw new Error(response.error);
+      return response.data!;
+    },
+    enabled: !!id,
+  });
+}
+
+export function useUpdateTeacher() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Pick<User, 'email' | 'full_name' | 'phone'>> }) => {
+      const response = await api.put<User>(`/auth/users/${id}`, data);
+      if (response.error) throw new Error(response.error);
+      return response.data!;
+    },
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.teachers });
+      queryClient.invalidateQueries({ queryKey: queryKeys.teacher(id) });
+    },
+  });
+}
+
+export function useDeleteTeacher() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.delete(`/auth/users/${id}`);
+      if (response.error) throw new Error(response.error);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.teachers });
     },
   });
 }

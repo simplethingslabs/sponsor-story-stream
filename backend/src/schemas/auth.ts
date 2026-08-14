@@ -116,6 +116,28 @@ export const createUserSchema = z.object({
   role: z.enum(['teacher', 'sponsor', 'admin'], { required_error: 'Role must be teacher, sponsor, or admin' }),
 });
 
+// Admin update user schema (all fields optional)
+export const updateUserSchema = z.object({
+  email: z
+    .string()
+    .email('Invalid email address')
+    .max(255, 'Email must be less than 255 characters')
+    .transform(val => val.toLowerCase().trim())
+    .optional(),
+  full_name: z
+    .string()
+    .min(2, 'Name must be at least 2 characters')
+    .max(100, 'Name must be less than 100 characters')
+    .transform(val => val.trim())
+    .optional(),
+  phone: z
+    .string()
+    .regex(/^\+?[\d\s-()]+$/, 'Invalid phone number format')
+    .max(20, 'Phone number must be less than 20 characters')
+    .optional()
+    .nullable(),
+});
+
 // Types
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
@@ -124,3 +146,4 @@ export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
 export type CreateUserInput = z.infer<typeof createUserSchema>;
+export type UpdateUserInput = z.infer<typeof updateUserSchema>;
