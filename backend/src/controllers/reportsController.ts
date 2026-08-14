@@ -131,10 +131,10 @@ export async function createReport(req: Request, res: Response, next: NextFuncti
       await client.query('BEGIN');
       
       const result = await client.query(
-        `INSERT INTO progress_reports (id, child_id, teacher_id, quarter, year, growth_narrative, activities, teacher_observations, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `INSERT INTO progress_reports (id, child_id, teacher_id, quarter, year, growth_narrative, activities, teacher_observations, status, attendance_percentage)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          RETURNING *`,
-        [id, data.child_id, teacherId, data.quarter, data.year, data.growth_narrative, data.activities, data.teacher_observations, data.status || 'draft']
+        [id, data.child_id, teacherId, data.quarter, data.year, data.growth_narrative, data.activities, data.teacher_observations, data.status || 'draft', data.attendance_percentage ?? null]
       );
       
       // Add media if provided
@@ -203,6 +203,10 @@ export async function updateReport(req: Request, res: Response, next: NextFuncti
       fields.push(`teacher_observations = $${paramIndex++}`);
       values.push(data.teacher_observations);
     }
+    if (data.attendance_percentage !== undefined) {
+      fields.push(`attendance_percentage = $${paramIndex++}`);
+      values.push(data.attendance_percentage);
+    }
     if (data.status !== undefined) {
       fields.push(`status = $${paramIndex++}`);
       values.push(data.status);
@@ -210,11 +214,20 @@ export async function updateReport(req: Request, res: Response, next: NextFuncti
         fields.push(`published_at = NOW()`);
       }
     }
-    
+
     if (fields.length === 0 && !data.media) {
       return res.status(400).json({ error: 'No fields to update' });
     }
-    
+
+    if (data.status === 'published') {
+      const finalAttendance = data.attendance_percentage !== undefined
+        ? data.attendance_percentage
+        : (await pool.query('SELECT attendance_percentage FROM progress_reports WHERE id = $1', [id])).rows[0]?.attendance_percentage;
+      if (finalAttendance === null || finalAttendance === undefined) {
+        return res.status(400).json({ error: 'Attendance percentage is required before publishing' });
+      }
+    }
+
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -276,9 +289,20 @@ export async function publishReport(req: Request, res: Response, next: NextFunct
   try {
     const { id } = req.params;
     const { notify_sponsors = true } = req.body;
-    
+
+    const existing = await pool.query(
+      `SELECT attendance_percentage FROM progress_reports WHERE id = $1 AND deleted_at IS NULL`,
+      [id]
+    );
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: 'Report not found' });
+    }
+    if (existing.rows[0].attendance_percentage === null) {
+      return res.status(400).json({ error: 'Attendance percentage is required before publishing' });
+    }
+
     const result = await pool.query(
-      `UPDATE progress_reports 
+      `UPDATE progress_reports
        SET status = 'published', published_at = NOW(), updated_at = NOW()
        WHERE id = $1 AND deleted_at IS NULL
        RETURNING *`,

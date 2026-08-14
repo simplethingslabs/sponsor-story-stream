@@ -13,7 +13,6 @@ import auditRoutes from './audit';
 import uploadRoutes from './upload';
 import trashRoutes from './trash';
 import paymentsRoutes from './payments';
-import attendanceRoutes from './attendance';
 import momentsRoutes from './moments';
 
 const router = Router();
@@ -32,7 +31,6 @@ router.use('/audit', auditRoutes);
 router.use('/upload', uploadRoutes);
 router.use('/trash', trashRoutes);
 router.use('/payments', paymentsRoutes);
-router.use('/attendance', attendanceRoutes);
 router.use('/moments', momentsRoutes);
 
 // Health check

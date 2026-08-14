@@ -53,6 +53,8 @@ export interface ProgressReport {
   activities: string;
   teacher_observations: string;
   status: ReportStatus;
+  /** Quarterly attendance percentage (0-100), manually entered by the teacher. Required to publish. */
+  attendance_percentage?: number | null;
   published_at?: string;
   created_at: string;
   updated_at: string;

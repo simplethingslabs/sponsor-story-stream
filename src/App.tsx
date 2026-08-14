@@ -45,6 +45,7 @@ import EditTeacher from "./pages/admin/EditTeacher";
 import AddSponsor from "./pages/admin/AddSponsor";
 import Trash from "./pages/admin/Trash";
 import ReportReview from "./pages/admin/ReportReview";
+import AttendanceOverview from "./pages/admin/AttendanceOverview";
 import FinancialDashboard from "./pages/admin/FinancialDashboard";
 import PaymentManagement from "./pages/admin/PaymentManagement";
 import NotificationCenter from "./pages/admin/NotificationCenter";
@@ -65,7 +66,7 @@ import SponsorPayments from "./pages/sponsor/Payments";
 // Teacher Pages
 import TeacherDashboard from "./pages/teacher/TeacherDashboard";
 import TeacherStudents from "./pages/teacher/TeacherStudents";
-import AttendanceMarking from "./pages/teacher/AttendanceMarking";
+import Attendance from "./pages/teacher/Attendance";
 import ClassroomMoments from "./pages/teacher/ClassroomMoments";
 import TeacherReports from "./pages/teacher/TeacherReports";
 
@@ -108,6 +109,7 @@ const App = () => (
               <Route path="/dashboard/children/:id/edit" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><EditChild /></ProtectedRoute>} />
               <Route path="/dashboard/reports" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><ReportsList /></ProtectedRoute>} />
               <Route path="/dashboard/reports/review" element={<ProtectedRoute allowedRoles={['super_admin', 'admin']}><ReportReview /></ProtectedRoute>} />
+              <Route path="/dashboard/attendance" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><AttendanceOverview /></ProtectedRoute>} />
               <Route path="/dashboard/reports/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><CreateReport /></ProtectedRoute>} />
               <Route path="/dashboard/reports/:id" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><ReportDetail /></ProtectedRoute>} />
               <Route path="/dashboard/reports/:id/edit" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><EditReport /></ProtectedRoute>} />
@@ -147,7 +149,7 @@ const App = () => (
               {/* Teacher routes */}
               <Route path="/teacher" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><TeacherDashboard /></ProtectedRoute>} />
               <Route path="/teacher/students" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><TeacherStudents /></ProtectedRoute>} />
-              <Route path="/teacher/attendance" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><AttendanceMarking /></ProtectedRoute>} />
+              <Route path="/teacher/attendance" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><Attendance /></ProtectedRoute>} />
               <Route path="/teacher/moments" element={<FeatureRoute flag="classroomMoments"><ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><ClassroomMoments /></ProtectedRoute></FeatureRoute>} />
               <Route path="/teacher/reports" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><TeacherReports /></ProtectedRoute>} />
               <Route path="/teacher/reports/new" element={<ProtectedRoute allowedRoles={['super_admin', 'admin', 'teacher']}><CreateReport /></ProtectedRoute>} />

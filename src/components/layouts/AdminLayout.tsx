@@ -18,6 +18,7 @@ import {
   GraduationCap,
   ChevronDown,
   ClipboardList,
+  ClipboardCheck,
   Trash2,
   Bell,
   Settings,
@@ -41,6 +42,7 @@ const navigation = [
   { name: 'Children', href: '/dashboard/children', icon: Users },
   { name: 'Progress Reports', href: '/dashboard/reports', icon: FileText },
   { name: 'Report Review', href: '/dashboard/reports/review', icon: ClipboardList, adminOnly: true },
+  { name: 'Attendance', href: '/dashboard/attendance', icon: ClipboardCheck },
   { name: 'Newsletters', href: '/dashboard/newsletters', icon: Newspaper, flag: 'newsletters' as FeatureFlag },
   { name: 'Events', href: '/dashboard/events', icon: Calendar, flag: 'events' as FeatureFlag },
   { name: 'Sponsors', href: '/dashboard/sponsors', icon: UserPlus },
@@ -50,10 +52,6 @@ const navigation = [
 const financialNavigation = [
   { name: 'Financial Dashboard', href: '/dashboard/financials', icon: LayoutDashboard, flag: 'financialDashboard' as FeatureFlag },
   { name: 'Payment Management', href: '/dashboard/payments', icon: FileText, flag: 'paymentManagement' as FeatureFlag },
-];
-
-const teacherNavigation = [
-  { name: 'Teacher Portal', href: '/teacher', icon: GraduationCap },
 ];
 
 const systemNavigation = [
@@ -143,34 +141,6 @@ function Sidebar({ onLinkClick }: { onLinkClick?: () => void }) {
             </nav>
           </>
         )}
-
-        {/* Teacher Portal Section */}
-        <>
-          <div className="my-4 border-t border-border" />
-          <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Teacher
-          </p>
-          <nav className="space-y-1">
-            {teacherNavigation.map((item) => {
-              const isActive = location.pathname.startsWith(item.href);
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  onClick={onLinkClick}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  }`}
-                >
-                  <item.icon className="h-5 w-5" />
-                  {item.name}
-                </Link>
-              );
-            })}
-          </nav>
-        </>
 
         {/* System Section - Super Admin Only */}
         {isSuperAdmin && visibleSystemNavigation.length > 0 && (

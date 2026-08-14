@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Calendar, TrendingUp, Activity, Eye, Image, Download } from 'lucide-react';
+import { EmptyState } from '@/components/EmptyState';
+import { ArrowLeft, Calendar, TrendingUp, Activity, Eye, Image, Download, ClipboardCheck } from 'lucide-react';
 
 export default function ReportDetail() {
   const { reportId, id } = useParams();
@@ -127,6 +128,23 @@ export default function ReportDetail() {
                 <Calendar className="h-4 w-4" />
                 <span>{quarterLabels[report.quarter]} {report.year}</span>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Attendance */}
+          <Card className="print:shadow-none print:border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardCheck className="h-5 w-5 text-primary" />
+                Attendance
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {report.attendance_percentage != null ? (
+                <p className="text-2xl font-bold">{report.attendance_percentage}%</p>
+              ) : (
+                <EmptyState icon={ClipboardCheck} title="Not yet reported" />
+              )}
             </CardContent>
           </Card>
 

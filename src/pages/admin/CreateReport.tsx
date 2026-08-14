@@ -8,6 +8,7 @@ import { AdminLayout } from '@/components/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -27,6 +28,10 @@ const reportSchema = z.object({
   growth_narrative: z.string().min(10, 'Growth narrative is required'),
   activities: z.string().min(10, 'Activities section is required'),
   teacher_observations: z.string().min(10, 'Teacher observations are required'),
+  attendance_percentage: z.preprocess(
+    (v) => (v === '' || v === undefined ? undefined : Number(v)),
+    z.number().min(0).max(100).optional()
+  ),
 });
 
 type ReportFormData = z.infer<typeof reportSchema>;
@@ -58,6 +63,15 @@ export default function CreateReport() {
   });
 
   const onSubmit = async (data: ReportFormData, action: 'draft' | 'submit' | 'publish' = 'draft') => {
+    if (action === 'publish' && data.attendance_percentage === undefined) {
+      toast({
+        title: 'Attendance % required',
+        description: 'Enter the attendance percentage before publishing.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (action !== 'draft') setIsSubmittingFinal(true);
 
     try {
@@ -68,6 +82,7 @@ export default function CreateReport() {
         growth_narrative: data.growth_narrative,
         activities: data.activities,
         teacher_observations: data.teacher_observations,
+        attendance_percentage: data.attendance_percentage ?? null,
         teacher_id: user?.id || 'teacher-1',
         status: action === 'submit' ? 'pending_review' : 'draft',
       });
@@ -189,6 +204,31 @@ export default function CreateReport() {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Attendance */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Attendance</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 max-w-xs">
+                  <Label>Attendance % (required to publish)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step="0.1"
+                    placeholder="e.g. 92"
+                    {...register('attendance_percentage')}
+                  />
+                  {errors.attendance_percentage && (
+                    <p className="text-sm text-destructive">
+                      {errors.attendance_percentage.message}
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>

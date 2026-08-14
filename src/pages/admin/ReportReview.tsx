@@ -180,7 +180,31 @@ export default function ReportReview() {
     setIsSubmitting(false);
   };
 
+  const handlePublish = async (report: ProgressReport) => {
+    if (report.attendance_percentage == null) {
+      toast({
+        title: 'Attendance % required',
+        description: 'Edit this report and add an attendance percentage before publishing.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    await publishReport.mutateAsync({ id: report.id });
+  };
+
   const handleBulkPublish = async () => {
+    const missingAttendance = approvedReports.filter(
+      r => selectedReports.includes(r.id) && r.attendance_percentage == null
+    );
+    if (missingAttendance.length > 0) {
+      toast({
+        title: 'Attendance % required',
+        description: `${missingAttendance.length} report(s) are missing an attendance percentage. Edit them before publishing.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await Promise.all(
@@ -332,7 +356,7 @@ export default function ReportReview() {
                   {report.status === 'approved' && (
                     <Button
                       size="sm"
-                      onClick={() => publishReport.mutateAsync({ id: report.id })}
+                      onClick={() => handlePublish(report)}
                     >
                       <Send className="h-4 w-4 mr-1" />
                       Publish

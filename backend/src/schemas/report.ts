@@ -28,6 +28,7 @@ export const createReportSchema = z.object({
     .max(5000, 'Teacher observations must be less than 5000 characters')
     .transform(val => sanitizeString(val)),
   status: z.enum(['draft', 'pending_review']).default('draft'),
+  attendance_percentage: z.number().min(0).max(100).optional().nullable(),
   media: z
     .array(
       z.object({

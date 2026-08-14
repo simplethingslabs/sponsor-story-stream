@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -33,6 +34,10 @@ const reportSchema = z.object({
   growth_narrative: z.string().min(10, 'Growth narrative must be at least 10 characters'),
   activities: z.string().min(10, 'Activities must be at least 10 characters'),
   teacher_observations: z.string().min(10, 'Observations must be at least 10 characters'),
+  attendance_percentage: z.preprocess(
+    (v) => (v === '' || v === undefined || v === null ? undefined : Number(v)),
+    z.number().min(0).max(100).optional()
+  ),
 });
 
 type ReportFormData = z.infer<typeof reportSchema>;
@@ -58,6 +63,7 @@ export default function EditReport() {
       growth_narrative: '',
       activities: '',
       teacher_observations: '',
+      attendance_percentage: undefined,
     },
   });
 
@@ -70,6 +76,7 @@ export default function EditReport() {
         growth_narrative: report.growth_narrative,
         activities: report.activities,
         teacher_observations: report.teacher_observations,
+        attendance_percentage: report.attendance_percentage ?? undefined,
       });
     }
   }, [report, form]);
@@ -95,8 +102,18 @@ export default function EditReport() {
   }
 
   const onSubmit = async (data: ReportFormData, publish = false) => {
+    if (publish && data.attendance_percentage === undefined) {
+      toast({
+        title: 'Attendance % required',
+        description: 'Enter the attendance percentage before publishing.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       if (publish) {
+        await updateReport.mutateAsync({ id: id!, data: { ...data } });
         await publishReport.mutateAsync({ id: id!, notify_sponsors: true });
       } else {
         await updateReport.mutateAsync({
@@ -216,6 +233,35 @@ export default function EditReport() {
                           ))}
                         </SelectContent>
                       </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Attendance</CardTitle>
+              </CardHeader>
+              <CardContent className="max-w-xs">
+                <FormField
+                  control={form.control}
+                  name="attendance_percentage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Attendance % (required to publish)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step="0.1"
+                          placeholder="e.g. 92"
+                          {...field}
+                          value={field.value ?? ''}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

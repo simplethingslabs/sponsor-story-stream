@@ -17,7 +17,14 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useChildren, useReports } from '@/hooks/useApi';
-import { format } from 'date-fns';
+
+function getCurrentQuarter() {
+  const month = new Date().getMonth();
+  if (month < 3) return 'Q1';
+  if (month < 6) return 'Q2';
+  if (month < 9) return 'Q3';
+  return 'Q4';
+}
 
 export default function TeacherDashboard() {
   const { data: childrenData, isLoading: childrenLoading } = useChildren({ status: 'active' });
@@ -25,33 +32,36 @@ export default function TeacherDashboard() {
 
   const myStudents = childrenData?.data || [];
   const allReports = reportsData?.data || [];
-  
+
   const draftReports = allReports.filter(r => r.status === 'draft');
   const needsRevisionReports = allReports.filter(r => r.status === 'needs_revision');
-  
-  const todayDate = format(new Date(), 'yyyy-MM-dd');
-  const attendanceMarked = 3;
-  const totalStudents = myStudents.length;
+
+  const currentQuarter = getCurrentQuarter();
+  const currentYear = new Date().getFullYear();
+  const myStudentIds = new Set(myStudents.map(c => c.id));
+  const quarterAttendanceReports = allReports.filter(
+    r => r.status === 'published' && r.quarter === currentQuarter && r.year === currentYear &&
+      myStudentIds.has(r.child_id) && r.attendance_percentage != null
+  );
+  const avgAttendance = quarterAttendanceReports.length > 0
+    ? Math.round(
+        quarterAttendanceReports.reduce((sum, r) => sum + (r.attendance_percentage || 0), 0) /
+        quarterAttendanceReports.length
+      )
+    : null;
 
   const isLoading = childrenLoading || reportsLoading;
 
+  const myStudentsStat = {
+    title: 'My Students',
+    value: myStudents.length.toString(),
+    description: 'Active students assigned',
+    icon: Users,
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-100',
+  };
+
   const stats = [
-    {
-      title: 'My Students',
-      value: myStudents.length.toString(),
-      description: 'Active students assigned',
-      icon: Users,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-100',
-    },
-    {
-      title: "Today's Attendance",
-      value: `${attendanceMarked}/${totalStudents}`,
-      description: attendanceMarked === totalStudents ? 'All marked' : 'Pending',
-      icon: ClipboardCheck,
-      color: attendanceMarked === totalStudents ? 'text-green-600' : 'text-amber-600',
-      bgColor: attendanceMarked === totalStudents ? 'bg-green-100' : 'bg-amber-100',
-    },
     {
       title: 'Reports Pending',
       value: (draftReports.length + needsRevisionReports.length).toString(),
@@ -91,6 +101,48 @@ export default function TeacherDashboard() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">{myStudentsStat.title}</p>
+                  <p className="text-2xl font-bold">{myStudentsStat.value}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{myStudentsStat.description}</p>
+                </div>
+                <div className={`rounded-full p-3 ${myStudentsStat.bgColor}`}>
+                  <Users className={`h-6 w-6 ${myStudentsStat.color}`} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              {avgAttendance !== null ? (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">This Quarter's Attendance</p>
+                    <p className="text-2xl font-bold">{avgAttendance}%</p>
+                    <p className="text-xs text-muted-foreground mt-1">{currentQuarter} {currentYear}</p>
+                  </div>
+                  <div className="rounded-full p-3 bg-green-100">
+                    <ClipboardCheck className="h-6 w-6 text-green-600" />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">This Quarter's Attendance</p>
+                    <p className="text-sm text-muted-foreground mt-2">Not yet reported</p>
+                  </div>
+                  <div className="rounded-full p-3 bg-amber-100">
+                    <ClipboardCheck className="h-6 w-6 text-amber-600" />
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {stats.map((stat) => (
             <Card key={stat.title}>
               <CardContent className="p-6">
@@ -123,9 +175,9 @@ export default function TeacherDashboard() {
                       <ClipboardCheck className="h-5 w-5 text-primary" />
                     </div>
                     <div className="text-left">
-                      <p className="font-medium">Mark Attendance</p>
+                      <p className="font-medium">View Attendance</p>
                       <p className="text-xs text-muted-foreground">
-                        {totalStudents - attendanceMarked} students remaining
+                        Quarterly attendance by student
                       </p>
                     </div>
                   </div>
