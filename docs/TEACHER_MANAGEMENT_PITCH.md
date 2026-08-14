@@ -1,6 +1,7 @@
 # Pitch: Teacher Management (View / Edit / Delete)
 
-Status: Draft — not started
+Status: Shipped — see [TEACHER_MANAGEMENT_CHANGELOG.md](./TEACHER_MANAGEMENT_CHANGELOG.md)
+for what was actually built and the decisions made along the way.
 Framework: Shape Up (pitch + scopes, no dates)
 
 ## Problem
