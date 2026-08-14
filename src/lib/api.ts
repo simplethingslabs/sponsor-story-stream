@@ -1,8 +1,8 @@
 import type { ApiResponse } from '@/types';
 
 // Configure your backend API URL here
-// After deploying to Render, update this to your Render API URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://sponsor-portal-api-a49s.onrender.com/api';
+// After deploying to Railway, update this to your Railway API URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://sponsor-story-stream-production.up.railway.app/api';
 
 // Token refresh state
 let isRefreshing = false;
