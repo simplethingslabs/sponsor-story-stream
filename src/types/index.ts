@@ -25,6 +25,7 @@ export interface Child {
   photo_url?: string;
   enrollment_date: string;
   status: 'active' | 'graduated' | 'withdrawn';
+  teacher_id?: string | null;
   created_at: string;
   updated_at: string;
 }

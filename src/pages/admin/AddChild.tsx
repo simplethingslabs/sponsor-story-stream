@@ -18,7 +18,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 import { AvatarUpload } from '@/components/media';
-import { useCreateChild } from '@/hooks/useApi';
+import { useCreateChild, useTeachers } from '@/hooks/useApi';
 
 const childSchema = z.object({
   first_name: z.string().min(1, 'First name is required'),
@@ -28,6 +28,7 @@ const childSchema = z.object({
   photo_url: z.string().optional(),
   enrollment_date: z.string().min(1, 'Enrollment date is required'),
   status: z.enum(['active', 'graduated', 'withdrawn']),
+  teacher_id: z.string().optional(),
 });
 
 type ChildFormData = z.infer<typeof childSchema>;
@@ -50,6 +51,8 @@ export default function AddChild() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const createChild = useCreateChild();
+  const { data: teachersData } = useTeachers();
+  const teachers = teachersData?.data || [];
 
   const {
     register,
@@ -75,6 +78,7 @@ export default function AddChild() {
         photo_url: data.photo_url,
         enrollment_date: data.enrollment_date,
         status: data.status,
+        teacher_id: data.teacher_id === 'unassigned' ? undefined : data.teacher_id,
       });
       toast({
         title: 'Success',
@@ -218,6 +222,26 @@ export default function AddChild() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="teacher_id">Assigned Teacher (optional)</Label>
+                <Select
+                  onValueChange={(value) => setValue('teacher_id', value)}
+                  defaultValue="unassigned"
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select teacher" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {teachers.map((teacher) => (
+                      <SelectItem key={teacher.id} value={teacher.id}>
+                        {teacher.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">

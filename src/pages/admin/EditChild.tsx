@@ -25,7 +25,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { AdminLayout } from '@/components/layouts/AdminLayout';
 import { AvatarUpload } from '@/components/media';
-import { useChild, useUpdateChild } from '@/hooks/useApi';
+import { useChild, useUpdateChild, useTeachers } from '@/hooks/useApi';
 
 const childSchema = z.object({
   first_name: z.string().min(1, 'First name is required'),
@@ -35,6 +35,7 @@ const childSchema = z.object({
   enrollment_date: z.string().min(1, 'Enrollment date is required'),
   status: z.enum(['active', 'graduated', 'withdrawn']),
   photo_url: z.string().optional(),
+  teacher_id: z.string().optional(),
 });
 
 type ChildFormData = z.infer<typeof childSchema>;
@@ -50,6 +51,8 @@ export default function EditChild() {
   const { toast } = useToast();
   const { data: child, isLoading, error } = useChild(id || '');
   const updateChild = useUpdateChild();
+  const { data: teachersData } = useTeachers();
+  const teachers = teachersData?.data || [];
 
   const form = useForm<ChildFormData>({
     resolver: zodResolver(childSchema),
@@ -61,6 +64,7 @@ export default function EditChild() {
       enrollment_date: '',
       status: 'active',
       photo_url: '',
+      teacher_id: 'unassigned',
     },
   });
 
@@ -74,6 +78,7 @@ export default function EditChild() {
         enrollment_date: child.enrollment_date,
         status: child.status,
         photo_url: child.photo_url || '',
+        teacher_id: child.teacher_id || 'unassigned',
       });
     }
   }, [child, form]);
@@ -105,6 +110,7 @@ export default function EditChild() {
         data: {
           ...data,
           photo_url: data.photo_url || undefined,
+          teacher_id: data.teacher_id === 'unassigned' ? null : data.teacher_id,
         },
       });
       toast({
@@ -261,6 +267,31 @@ export default function EditChild() {
                           <SelectItem value="active">Active</SelectItem>
                           <SelectItem value="graduated">Graduated</SelectItem>
                           <SelectItem value="withdrawn">Withdrawn</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="teacher_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Assigned Teacher</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select teacher" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="unassigned">Unassigned</SelectItem>
+                          {teachers.map((teacher) => (
+                            <SelectItem key={teacher.id} value={teacher.id}>
+                              {teacher.full_name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />

@@ -31,7 +31,16 @@ export async function getChildren(req: Request, res: Response, next: NextFunctio
       params.push(grade);
       paramIndex++;
     }
-    
+
+    // Teachers (not also admin/super_admin) only see their own assigned students
+    const roles = req.user?.roles || [];
+    const isTeacherOnly = roles.includes('teacher') && !roles.some(r => r === 'admin' || r === 'super_admin');
+    if (isTeacherOnly) {
+      whereClause += ` AND c.teacher_id = $${paramIndex}`;
+      params.push(req.user!.id);
+      paramIndex++;
+    }
+
     // Get total count
     const countResult = await pool.query(
       `SELECT COUNT(*) FROM children c WHERE ${whereClause}`,
@@ -101,8 +110,8 @@ export async function createChild(req: Request, res: Response, next: NextFunctio
     const id = uuidv4();
     
     const result = await pool.query(
-      `INSERT INTO children (id, first_name, last_name, date_of_birth, grade, photo_url, enrollment_date, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO children (id, first_name, last_name, date_of_birth, grade, photo_url, enrollment_date, status, teacher_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
       [
         id,
@@ -113,9 +122,10 @@ export async function createChild(req: Request, res: Response, next: NextFunctio
         data.photo_url || null,
         data.enrollment_date || new Date().toISOString().split('T')[0],
         data.status || 'active',
+        data.teacher_id || null,
       ]
     );
-    
+
     res.status(201).json(result.rows[0]);
   } catch (error) {
     next(error);
@@ -156,7 +166,11 @@ export async function updateChild(req: Request, res: Response, next: NextFunctio
       fields.push(`status = $${paramIndex++}`);
       values.push(data.status);
     }
-    
+    if (data.teacher_id !== undefined) {
+      fields.push(`teacher_id = $${paramIndex++}`);
+      values.push(data.teacher_id);
+    }
+
     if (fields.length === 0) {
       return res.status(400).json({ error: 'No fields to update' });
     }

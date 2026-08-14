@@ -20,12 +20,19 @@ export async function getReports(req: Request, res: Response, next: NextFunction
       whereClause += ` AND r.child_id = $${paramIndex++}`;
       params.push(child_id);
     }
-    
-    if (teacher_id) {
+
+    // Teachers (not also admin/super_admin) only see reports they authored,
+    // regardless of any teacher_id query param they pass.
+    const roles = req.user?.roles || [];
+    const isTeacherOnly = roles.includes('teacher') && !roles.some(r => r === 'admin' || r === 'super_admin');
+    if (isTeacherOnly) {
+      whereClause += ` AND r.teacher_id = $${paramIndex++}`;
+      params.push(req.user!.id);
+    } else if (teacher_id) {
       whereClause += ` AND r.teacher_id = $${paramIndex++}`;
       params.push(teacher_id);
     }
-    
+
     if (quarter) {
       whereClause += ` AND r.quarter = $${paramIndex++}`;
       params.push(quarter);

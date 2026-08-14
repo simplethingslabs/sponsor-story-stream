@@ -22,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useTeachers, useDeleteTeacher } from '@/hooks/useApi';
+import { useTeachers, useDeleteTeacher, useChildren } from '@/hooks/useApi';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, GraduationCap, MoreHorizontal, Eye, Edit, Trash2, Loader2 } from 'lucide-react';
 import type { User } from '@/types';
@@ -31,9 +31,18 @@ export default function TeachersList() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data, isLoading } = useTeachers();
+  const { data: childrenData } = useChildren({ limit: 100 });
   const deleteTeacherMutation = useDeleteTeacher();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const teachers = data?.data || [];
+  const children = childrenData?.data || [];
+
+  const studentCountByTeacher = children.reduce<Record<string, number>>((acc, child) => {
+    if (child.teacher_id) {
+      acc[child.teacher_id] = (acc[child.teacher_id] || 0) + 1;
+    }
+    return acc;
+  }, {});
 
   const handleDelete = async () => {
     if (deleteId) {
@@ -95,6 +104,7 @@ export default function TeachersList() {
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Phone</TableHead>
+                    <TableHead>Students</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead className="w-[80px]">Actions</TableHead>
                   </TableRow>
@@ -115,6 +125,9 @@ export default function TeachersList() {
                       </TableCell>
                       <TableCell className="text-muted-foreground">{teacher.email}</TableCell>
                       <TableCell className="text-muted-foreground">{teacher.phone || '—'}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {studentCountByTeacher[teacher.id] || 0}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">
                         {new Date(teacher.created_at).toLocaleDateString()}
                       </TableCell>

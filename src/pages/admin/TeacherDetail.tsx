@@ -1,17 +1,19 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { AdminLayout } from '@/components/layouts/AdminLayout';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Mail, Phone, CalendarDays, Edit } from 'lucide-react';
-import { useTeacher } from '@/hooks/useApi';
+import { ArrowLeft, Mail, Phone, CalendarDays, Edit, Users } from 'lucide-react';
+import { useTeacher, useChildren } from '@/hooks/useApi';
 
 export default function TeacherDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
   const { data: teacher, isLoading } = useTeacher(id || '');
+  const { data: childrenData, isLoading: studentsLoading } = useChildren({ limit: 100 });
+  const students = (childrenData?.data || []).filter((child) => child.teacher_id === id);
 
   if (isLoading) {
     return (
@@ -81,6 +83,50 @@ export default function TeacherDetail() {
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Assigned Students ({students.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {studentsLoading ? (
+              <div className="space-y-3">
+                {[...Array(2)].map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : students.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Users className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                <p>No students assigned to this teacher yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {students.map((student) => (
+                  <Link
+                    key={student.id}
+                    to={`/dashboard/children/${student.id}`}
+                    className="flex items-center gap-3 rounded-md border p-3 text-sm hover:bg-muted/50"
+                  >
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={student.photo_url} />
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                        {student.first_name?.charAt(0) || 'S'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="font-medium">
+                      {student.first_name} {student.last_name}
+                    </span>
+                    <span className="text-muted-foreground">{student.grade}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

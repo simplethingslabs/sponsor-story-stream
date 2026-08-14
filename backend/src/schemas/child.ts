@@ -43,6 +43,11 @@ export const createChildSchema = z.object({
   status: z
     .enum(['active', 'graduated', 'withdrawn'])
     .default('active'),
+  teacher_id: z
+    .string()
+    .uuid('Invalid teacher ID')
+    .optional()
+    .nullable(),
 });
 
 // Update child schema (all fields optional)
