@@ -27,14 +27,22 @@ import { AdminLayout } from '@/components/layouts/AdminLayout';
 import { AvatarUpload } from '@/components/media';
 import { useChild, useUpdateChild, useTeachers } from '@/hooks/useApi';
 
+const NAME_REGEX = /^[a-zA-Z\s'-]+$/;
+
 const childSchema = z.object({
-  first_name: z.string().min(1, 'First name is required'),
-  last_name: z.string().min(1, 'Last name is required'),
-  date_of_birth: z.string().min(1, 'Date of birth is required'),
+  first_name: z.string().min(1, 'First name is required').regex(NAME_REGEX, 'First name can only contain letters, spaces, hyphens, and apostrophes'),
+  last_name: z.string().min(1, 'Last name is required').regex(NAME_REGEX, 'Last name can only contain letters, spaces, hyphens, and apostrophes'),
+  date_of_birth: z.string().min(1, 'Date of birth is required').refine(val => {
+    const date = new Date(val);
+    const now = new Date();
+    const minAge = new Date(now.getFullYear() - 25, now.getMonth(), now.getDate());
+    const maxAge = new Date(now.getFullYear() - 3, now.getMonth(), now.getDate());
+    return date >= minAge && date <= maxAge;
+  }, 'Child must be between 3 and 25 years old'),
   grade: z.string().min(1, 'Grade is required'),
   enrollment_date: z.string().min(1, 'Enrollment date is required'),
   status: z.enum(['active', 'graduated', 'withdrawn']),
-  photo_url: z.string().optional(),
+  photo_url: z.string().url('Invalid photo URL').optional().or(z.literal('')),
   teacher_id: z.string().optional(),
 });
 
@@ -200,6 +208,7 @@ export default function EditChild() {
                           onChange={field.onChange}
                           name={`${form.watch('first_name')} ${form.watch('last_name')}`}
                           size="lg"
+                          uploadEndpoint="/upload/image"
                         />
                       </FormControl>
                       <FormMessage />

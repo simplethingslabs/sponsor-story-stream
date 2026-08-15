@@ -9,11 +9,15 @@ import { useToast } from '@/hooks/use-toast';
 import { useCreateUser } from '@/hooks/useApi';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 
+const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+const PHONE_REGEX = /^\+?[\d\s\-()]+$/;
+
 export default function AddTeacher() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const createUser = useCreateUser();
   const [showPassword, setShowPassword] = useState(false);
+  const [fieldError, setFieldError] = useState<string | null>(null);
   const [form, setForm] = useState({
     full_name: '',
     email: '',
@@ -23,6 +27,17 @@ export default function AddTeacher() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFieldError(null);
+
+    if (form.password.length < 8 || !PASSWORD_COMPLEXITY_REGEX.test(form.password)) {
+      setFieldError('Password must be at least 8 characters and contain an uppercase letter, a lowercase letter, and a number.');
+      return;
+    }
+    if (form.phone && !PHONE_REGEX.test(form.phone)) {
+      setFieldError('Invalid phone number format.');
+      return;
+    }
+
     try {
       await createUser.mutateAsync({
         ...form,
@@ -107,6 +122,9 @@ export default function AddTeacher() {
                   </Button>
                 </div>
               </div>
+              {fieldError && (
+                <p className="text-sm text-destructive">{fieldError}</p>
+              )}
               <div className="flex gap-3 pt-2">
                 <Button type="submit" disabled={createUser.isPending}>
                   {createUser.isPending ? 'Creating...' : 'Create Teacher Account'}

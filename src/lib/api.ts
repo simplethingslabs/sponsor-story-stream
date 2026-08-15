@@ -146,8 +146,11 @@ class ApiClient {
       const data = await response.json();
 
       if (!response.ok) {
+        const detail = Array.isArray(data.details) && data.details.length > 0
+          ? data.details[0].message
+          : undefined;
         return {
-          error: data.error || data.message || `Request failed with status ${response.status}`,
+          error: detail || data.message || data.error || `Request failed with status ${response.status}`,
         };
       }
 
